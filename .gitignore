@@ -168,3 +168,8 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
+.idea/.*
+.idea/inspectionProfiles/
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
