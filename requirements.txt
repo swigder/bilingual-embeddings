@@ -1,0 +1,4 @@
+annoy
+gensim
+nltk
+numpy
