@@ -21,10 +21,10 @@ class SearchEngine:
             i += 1
         self.index.build(n_trees=5)
 
-    def query_index(self, query):
+    def query_index(self, query, n_results=5):
         query_vector = self._vectorize(word_tokenize(query), indexing=False)
-        result = self.index.get_nns_by_vector(query_vector, n=1)[0]
-        return self.documents[result]
+        results, distances = self.index.get_nns_by_vector(query_vector, n=n_results, include_distances=True)
+        return [(distance, self.documents[result]) for result, distance in zip(results, distances)]
 
     def _vectorize(self, tokens, indexing=True):
         return np.sum(self.dictionary.word_vectors(tokens=tokens), axis=0)

@@ -1,6 +1,8 @@
 import argparse
 
 import os
+
+import numpy as np
 from gensim.models.keyedvectors import EuclideanKeyedVectors
 
 
@@ -17,8 +19,13 @@ class MonolingualDictionary:
         self.emb = EuclideanKeyedVectors.load_word2vec_format(emb_file, binary=False)
         self.vector_dimensionality = self.emb.vector_size
 
+    def safe_word_vector(self, token):
+        if not self.emb.__contains__(token):
+            return np.zeros(shape=(self.vector_dimensionality,))
+        return self.emb.word_vec(token)
+
     def word_vectors(self, tokens):
-        return [self.emb.word_vec(token) for token in tokens]
+        return [self.safe_word_vector(token) for token in tokens]
 
     def synonyms(self, key, topn=1, vector=False):
         return self.emb.most_similar(key, topn=topn) if not vector else self.emb.similar_by_vector(key, topn=topn)
