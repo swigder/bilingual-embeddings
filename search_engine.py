@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 from annoy import AnnoyIndex
 from nltk import word_tokenize
+from nltk.corpus import stopwords
 
 from dictionary import BilingualDictionary, MonolingualDictionary
 
@@ -10,13 +11,15 @@ from dictionary import BilingualDictionary, MonolingualDictionary
 class SearchEngine:
     def __init__(self, dictionary):
         self.dictionary = dictionary
-        self.index = AnnoyIndex(dictionary.vector_dimensionality)
+        self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')
         self.documents = []
 
     def index_documents(self, documents):
         i = self.index.get_n_items()
+        to_remove = stopwords.words('english')
         for document in documents:
-            self.index.add_item(i, self._vectorize(tokens=word_tokenize(document)))
+            tokens = [word for word in word_tokenize(document) if word not in to_remove]
+            self.index.add_item(i, self._vectorize(tokens=tokens))
             self.documents.append(document)
             i += 1
         self.index.build(n_trees=5)
