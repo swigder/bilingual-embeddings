@@ -9,7 +9,8 @@ class IrDataReader:
 
         with open(file) as f:
             for line in f:
-                if not line:
+                line = line.strip()
+                if not line or self.skip_line(line):
                     continue
                 doc_id = extract_id_fn(line)
                 if doc_id is None:
@@ -23,15 +24,16 @@ class IrDataReader:
 
         return items
 
-    @staticmethod
-    def _read_relevance(file):
+    def _read_relevance(self, file):
         items = {}
         with open(file) as f:
             for line in f:
                 if not line.strip():
                     continue
-                query_id, *doc_ids = map(int, line.split())
-                items[query_id] = doc_ids
+                query_id, doc_ids = self.extract_relevance(line)
+                if query_id not in items:
+                    items[query_id] = []
+                items[query_id] += doc_ids
         return items
 
     def read(self, documents=None, queries=None, relevance=None):
@@ -60,6 +62,12 @@ class IrDataReader:
         pass
 
     def extract_line(self, line):
+        return line
+
+    def skip_line(self, line):
+        return False
+
+    def extract_relevance(self, line):
         pass
 
 
@@ -78,11 +86,33 @@ class TimeReader(IrDataReader):
             return None
         return int(line.split()[1].strip())
 
-    def extract_line(self, line):
-        return line
+    def extract_relevance(self, line):
+        doc_id, *judgements = map(int, line.split())
+        return doc_id, judgements
 
 
-readers = {'time': TimeReader}
+class AdiReader(IrDataReader):
+    @staticmethod
+    def extract_id(line):
+        if not line.startswith('.I'):
+            return None
+        return line.split()[1]
+
+    def extract_doc_id(self, line):
+        return self.extract_id(line)
+
+    def extract_query_id(self, line):
+        return self.extract_id(line)
+
+    def extract_relevance(self, line):
+        doc_id, judgements = map(int, line.split()[0:2])
+        return doc_id, [judgements]
+
+    def skip_line(self, line):
+        return line.startswith('.') and not line.startswith('.I')
+
+
+readers = {'time': TimeReader, 'adi': AdiReader}
 
 
 if __name__ == "__main__":
@@ -91,11 +121,23 @@ if __name__ == "__main__":
     parser.add_argument('dir', type=str, help='Directory with files')
     parser.add_argument('-d', '--documents', type=str, help='Documents file', required=False)
     parser.add_argument('-q', '--queries', type=str, help='Queries file', required=False)
+    parser.add_argument('-r', '--relevance', type=str, help='Relevance file', required=False)
     parser.add_argument('-t', '--type', choices=readers.keys(), default='time')
 
     args = parser.parse_args()
 
+    reader = readers[args.type]
+
+    def print_description(items, file):
+        print()
+        print('Read {} items in file {}. Example items:'.format(len(items), file))
+        keys = list(items.keys())
+        print('{}: {}'.format(keys[0], items[keys[0]][:300]))
+        print('{}: {}'.format(keys[1], items[keys[1]][:300]))
+
     if args.documents:
-        TimeReader().read_documents(args.dir + args.documents)
+        print_description(reader().read_documents(args.dir + args.documents), args.documents)
     if args.queries:
-        TimeReader().read_queries(args.dir + args.queries)
+        print_description(reader().read_queries(args.dir + args.queries), args.queries)
+    if args.relevance:
+        print_description(reader().read_relevance_judgments(args.dir + args.relevance), args.relevance)
