@@ -3,7 +3,7 @@ import os
 
 from dictionary import MonolingualDictionary
 from ir_data_reader import readers
-from search_engine import SearchEngine
+from search_engine import EmbeddingSearchEngine, TfIdfSearchEngine
 
 
 def precision_recall(expected, actual):
@@ -36,7 +36,7 @@ def test_search_engine(search_engine, documents, queries, relevance, n=5, verbos
         precision, recall = precision_recall(expected=relevance[i], actual=results_i)
         total_precision += precision
         total_recall += recall
-    print(total_precision / len(queries), total_recall / len(queries))
+    print('Precision / Recall: {:.4f} / {:.4f}'.format(total_precision / len(queries), total_recall / len(queries)))
 
 
 if __name__ == "__main__":
@@ -46,7 +46,8 @@ if __name__ == "__main__":
     parser.add_argument('embed', type=str, help='Embedding file', nargs='?')
     parser.add_argument('-t', '--type', choices=readers.keys(), default='time')
     parser.add_argument('-n', '--number_results', type=int, default=5)
-    parser.add_argument('-v', '--verbose', type=bool, default=False)
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-b', '--baseline', action='store_true')
 
     args = parser.parse_args()
 
@@ -57,8 +58,13 @@ if __name__ == "__main__":
 
     reader = readers[args.type](os.path.join(args.ir_dir, args.type))
 
-    mono_dict = MonolingualDictionary(emb_file=args.embed)
-    test_search_engine(SearchEngine(dictionary=mono_dict),
+    if not args.baseline:
+        mono_dict = MonolingualDictionary(emb_file=args.embed)
+        search_engine = EmbeddingSearchEngine(dictionary=mono_dict)
+    else:
+        search_engine = TfIdfSearchEngine()
+
+    test_search_engine(search_engine,
                        **reader.read_documents_queries_relevance(),
                        n=args.number_results,
                        verbose=args.verbose)
