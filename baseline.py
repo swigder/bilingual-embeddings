@@ -14,7 +14,6 @@ class TfIdfSearchEngine(SearchEngine):
 
     def index_documents(self, documents):
         to_remove = stopwords.words('english')
-        to_remove.append('.')
         for i, document in enumerate(documents):
             tokens = [word for word in word_tokenize(document) if word not in to_remove]
             self.documents.append((document, tokens, self._norm(tokens)))

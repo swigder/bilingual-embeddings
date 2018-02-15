@@ -2,7 +2,7 @@ import argparse
 import os
 
 from dictionary import MonolingualDictionary
-from ir_data_reader import readers
+from ir_data_reader import readers, sub_collection
 from search_engine import EmbeddingSearchEngine
 from baseline import TfIdfSearchEngine
 
@@ -19,7 +19,6 @@ def read_data(data_dir, doc_file, query_file, relevance_file, reader):
 
 
 def test_search_engine(search_engine, ir_collection, n=5, verbose=False):
-    search_engine.index_documents(ir_collection.documents.values())
     total_precision, total_recall = 0, 0
     for i, query in ir_collection.queries.items():
         results = search_engine.query_index(query, n_results=n)
@@ -40,6 +39,11 @@ def test_search_engine(search_engine, ir_collection, n=5, verbose=False):
     print()
     print('Precision / Recall: {:.4f} / {:.4f}'.format(total_precision / len(ir_collection.queries),
                                                        total_recall / len(ir_collection.queries)))
+
+
+def sub_query(query_i):
+    query_collection = sub_collection(ir_collection, query_i)
+    test_search_engine(search_engine, query_collection, n=args.number_results, verbose=True)
 
 
 if __name__ == "__main__":
@@ -68,7 +72,6 @@ if __name__ == "__main__":
     else:
         search_engine = TfIdfSearchEngine()
 
-    test_search_engine(search_engine,
-                       ir_collection,
-                       n=args.number_results,
-                       verbose=args.verbose)
+    search_engine.index_documents(ir_collection.documents.values())
+
+    test_search_engine(search_engine, ir_collection, n=args.number_results, verbose=args.verbose)

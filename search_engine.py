@@ -1,9 +1,10 @@
 import argparse
 
+from collections import defaultdict
+
 import numpy as np
 from annoy import AnnoyIndex
 from nltk import word_tokenize
-from nltk.corpus import stopwords
 
 from dictionary import BilingualDictionary, MonolingualDictionary
 
@@ -21,16 +22,24 @@ class EmbeddingSearchEngine(SearchEngine):
         self.dictionary = dictionary
         self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')
         self.documents = []
+        self.df = defaultdict(int)
+        self.default_df = 1
+        self.stopwords = set()
 
     def index_documents(self, documents):
-        i = self.index.get_n_items()
-        to_remove = stopwords.words('english')
-        for document in documents:
-            tokens = [word for word in word_tokenize(document) if word not in to_remove]
-            self.index.add_item(i, self._vectorize(tokens=tokens))
+        doc_tokens = []
+        for i, document in enumerate(documents):
             self.documents.append(document)
-            i += 1
-        self.index.build(n_trees=5)
+            tokens = word_tokenize(document)
+            doc_tokens.append(tokens)
+            for token in set(tokens):
+                self.df[token] += 1
+        self.default_df = np.average(list(self.df.values()))
+        max_df = .9 * len(documents)
+        self.stopwords = set([token for token, df in self.df.items() if df > max_df])
+        for i, tokens in enumerate(doc_tokens):
+            self.index.add_item(i, self._vectorize(tokens=tokens))
+        self.index.build(n_trees=30)
 
     def query_index(self, query, n_results=5):
         query_vector = self._vectorize(word_tokenize(query), indexing=False)
@@ -38,7 +47,12 @@ class EmbeddingSearchEngine(SearchEngine):
         return [(distance, self.documents[result]) for result, distance in zip(results, distances)]
 
     def _vectorize(self, tokens, indexing=True):
-        return np.sum(self.dictionary.word_vectors(tokens=tokens), axis=0)
+        vector = np.zeros((self.dictionary.vector_dimensionality,))
+        for token in tokens:
+            if token in self.stopwords:
+                continue
+            vector += self.dictionary.word_vector(token=token) / self.df.get(token, self.default_df)
+        return vector
 
 
 class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
