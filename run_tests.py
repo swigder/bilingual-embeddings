@@ -17,26 +17,27 @@ def read_data(data_dir, doc_file, query_file, relevance_file, reader):
     return reader.read(f(doc_file), f(query_file), f(relevance_file))
 
 
-def test_search_engine(search_engine, documents, queries, relevance, n=5, verbose=False):
-    search_engine.index_documents(documents.values())
+def test_search_engine(search_engine, ir_collection, n=5, verbose=False):
+    search_engine.index_documents(ir_collection.documents.values())
     total_precision, total_recall = 0, 0
-    for i, query in queries.items():
+    for i, query in ir_collection.queries.items():
         results = search_engine.query_index(query, n_results=n)
         results_i = []
         if verbose:
             print()
-            print(i, query, relevance[i])
+            print(i, query, ir_collection.relevance[i])
         for distance, result in results:
-            result_i = list(documents.keys())[list(documents.values()).index(result)]
+            result_i = list(ir_collection.documents.keys())[list(ir_collection.documents.values()).index(result)]
             results_i.append(result_i)
             if verbose:
                 print(result_i, distance, result[:300])
-                if result_i in relevance[i]:
+                if result_i in ir_collection.relevance[i]:
                     print('Correct!')
-        precision, recall = precision_recall(expected=relevance[i], actual=results_i)
+        precision, recall = precision_recall(expected=ir_collection.relevance[i], actual=results_i)
         total_precision += precision
         total_recall += recall
-    print('Precision / Recall: {:.4f} / {:.4f}'.format(total_precision / len(queries), total_recall / len(queries)))
+    print('Precision / Recall: {:.4f} / {:.4f}'.format(total_precision / len(ir_collection.queries),
+                                                       total_recall / len(ir_collection.queries)))
 
 
 if __name__ == "__main__":
@@ -57,6 +58,7 @@ if __name__ == "__main__":
         args.embed = '/Users/xx/Downloads/MUSE-master/trained/vectors-en.txt'
 
     reader = readers[args.type](os.path.join(args.ir_dir, args.type))
+    ir_collection = reader.read_documents_queries_relevance()
 
     if not args.baseline:
         mono_dict = MonolingualDictionary(emb_file=args.embed)
@@ -65,6 +67,6 @@ if __name__ == "__main__":
         search_engine = TfIdfSearchEngine()
 
     test_search_engine(search_engine,
-                       **reader.read_documents_queries_relevance(),
+                       ir_collection,
                        n=args.number_results,
                        verbose=args.verbose)

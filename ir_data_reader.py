@@ -1,6 +1,10 @@
 import argparse
-
 import os
+
+from collections import namedtuple
+
+
+IrCollection = namedtuple('IrCollection', ['documents', 'queries', 'relevance'])
 
 
 def dir_appender(dir_location):
@@ -36,11 +40,9 @@ class IrDataReader:
         return items
 
     def read_documents_queries_relevance(self):
-        return {
-            'documents': self.read_documents(),
-            'queries': self.read_queries(),
-            'relevance': self.read_relevance_judgments(),
-        }
+        return IrCollection(documents=self.read_documents(),
+                            queries=self.read_queries(),
+                            relevance=self.read_relevance_judgments())
 
     def read_documents(self):
         return self._read_file(self.doc_file, self.extract_doc_id)
@@ -144,5 +146,5 @@ if __name__ == "__main__":
 
     reader = readers[args.type](os.path.join(args.dir, args.type))
 
-    for name, item in reader.read_documents_queries_relevance().items():
+    for name, item in reader.read_documents_queries_relevance()._asdict().items():
         print_description(item, name)
