@@ -39,7 +39,7 @@ class TfIdfSearchEngine(SearchEngine):
                 dfs = {token: len(self.index[token]) for token in dimensions.keys()}
                 query_vector = self._vectorize(query_tokens, dimensions)
                 document_vector = self._vectorize(document_tokens, dimensions)
-                similarity = sum([dfs[dim] * query_vector[i] * document_vector[i] for dim, i in dimensions.items()])
+                similarity = sum([query_vector[i] * document_vector[i] / dfs[dim] for dim, i in dimensions.items()])
                 similarity /= (query_norm * document_norm)
                 if similarity > top_hits[0][0]:
                     del top_hits[0]
