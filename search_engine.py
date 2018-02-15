@@ -1,8 +1,5 @@
 import argparse
 
-from collections import defaultdict
-from math import sqrt
-
 import numpy as np
 from annoy import AnnoyIndex
 from nltk import word_tokenize
@@ -50,66 +47,6 @@ class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
 
     def _vectorize(self, tokens, indexing=False):
         return np.sum(self.dictionary.word_vectors(tokens=tokens, reverse=not indexing), axis=0)
-
-
-class TfIdfSearchEngine(SearchEngine):
-    def __init__(self):
-        self.index = {}
-        self.documents = []
-
-    def index_documents(self, documents):
-        to_remove = stopwords.words('english')
-        to_remove.append('.')
-        for i, document in enumerate(documents):
-            tokens = [word for word in word_tokenize(document) if word not in to_remove]
-            self.documents.append((document, tokens, self._norm(tokens)))
-            for token in tokens:
-                if token not in self.index:
-                    self.index[token] = [i]
-                elif self.index[token][-1] != i:
-                    self.index[token].append(i)
-
-    def query_index(self, query, n_results=5):
-        query_tokens = [word for word in word_tokenize(query) if word in self.index]
-        dimensions = {token: i for (i, token) in enumerate(list(set(query_tokens)))}
-        query_vector = self._vectorize(query_tokens, dimensions)
-        query_norm = self._norm(query_tokens)
-        processed = set()
-        top_hits = [(0, None)] * n_results  # using simple array with assumption that n_results is small
-        dfs = {token: len(self.index[token]) for token in dimensions.keys()}
-        for token in dimensions.keys():
-            for document_id in self.index[token]:
-                if document_id in processed:
-                    continue
-                processed.add(document_id)
-                document, document_tokens, document_norm = self.documents[document_id]
-                document_vector = self._vectorize(document_tokens, dimensions)
-                similarity = sum([dfs[dim] * query_vector[i] * document_vector[i] for dim, i in dimensions.items()])
-                similarity /= (query_norm * document_norm)
-                if similarity > top_hits[0][0]:
-                    del top_hits[0]
-                    insert_location = 0
-                    for score, _ in top_hits:
-                        if similarity < score:
-                            break
-                        insert_location += 1
-                    top_hits.insert(insert_location, (similarity, document_id))
-        return [(score, self.documents[doc_id][0]) for (score, doc_id) in reversed(top_hits)]
-
-    @staticmethod
-    def _vectorize(tokens, dimensions):
-        vector = [0] * len(dimensions)
-        for token in tokens:
-            if token in dimensions:
-                vector[dimensions[token]] += 1
-        return vector
-
-    @staticmethod
-    def _norm(tokens):
-        dimensions = defaultdict(int)
-        for token in tokens:
-            dimensions[token] += 1
-        return sqrt(sum([d**2 for d in dimensions.values()]))
 
 
 if __name__ == "__main__":

@@ -3,7 +3,8 @@ import os
 
 from dictionary import MonolingualDictionary
 from ir_data_reader import readers
-from search_engine import EmbeddingSearchEngine, TfIdfSearchEngine
+from search_engine import EmbeddingSearchEngine
+from baseline import TfIdfSearchEngine
 
 
 def precision_recall(expected, actual):
@@ -36,6 +37,7 @@ def test_search_engine(search_engine, ir_collection, n=5, verbose=False):
         precision, recall = precision_recall(expected=ir_collection.relevance[i], actual=results_i)
         total_precision += precision
         total_recall += recall
+    print()
     print('Precision / Recall: {:.4f} / {:.4f}'.format(total_precision / len(ir_collection.queries),
                                                        total_recall / len(ir_collection.queries)))
 
