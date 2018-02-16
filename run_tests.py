@@ -4,7 +4,7 @@ import os
 from dictionary import MonolingualDictionary
 from ir_data_reader import readers, sub_collection
 from search_engine import EmbeddingSearchEngine
-from baseline import TfIdfSearchEngine
+from baseline import CosineSimilaritySearchEngine
 
 
 def precision_recall(expected, actual):
@@ -41,9 +41,10 @@ def test_search_engine(search_engine, ir_collection, n=5, verbose=False):
                                                        total_recall / len(ir_collection.queries)))
 
 
-def sub_query(query_i):
+def sub_query(query_i, n=None):
+    n = n if n else args.number_results
     query_collection = sub_collection(ir_collection, query_i)
-    test_search_engine(search_engine, query_collection, n=args.number_results, verbose=True)
+    test_search_engine(search_engine, query_collection, n=n, verbose=True)
 
 
 if __name__ == "__main__":
@@ -70,7 +71,7 @@ if __name__ == "__main__":
         mono_dict = MonolingualDictionary(emb_file=args.embed)
         search_engine = EmbeddingSearchEngine(dictionary=mono_dict)
     else:
-        search_engine = TfIdfSearchEngine()
+        search_engine = CosineSimilaritySearchEngine()
 
     search_engine.index_documents(ir_collection.documents.values())
 
