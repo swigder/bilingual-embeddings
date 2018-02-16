@@ -108,6 +108,9 @@ class TimeReader(IrDataReader):
     def skip_line(self, line):
         return line.startswith('*STOP')
 
+    def skip_line(self, line):
+        return line.startswith('*STOP')
+
 
 class AdiReader(IrDataReader):
     def __init__(self, data_dir):
