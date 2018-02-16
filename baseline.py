@@ -2,22 +2,29 @@ from collections import defaultdict
 from math import sqrt
 
 from nltk import word_tokenize
-from nltk.corpus import stopwords
 
 from search_engine import SearchEngine
 
 
-class TfIdfSearchEngine(SearchEngine):
+class CosineSimilaritySearchEngine(SearchEngine):
     def __init__(self):
+        super().__init__()
         self.index = {}
         self.documents = []
+        self.doc_tokens = []
+        self.doc_norms = []
 
     def index_documents(self, documents):
-        to_remove = stopwords.words('english')
-        for i, document in enumerate(documents):
-            tokens = [word for word in word_tokenize(document) if word not in to_remove]
-            self.documents.append((document, tokens, self._norm(tokens)))
-            for token in tokens:
+        self.documents = list(documents)
+        doc_tokens = []
+        for document in documents:
+            doc_tokens.append(word_tokenize(document))
+        self._init_df_stopwords(doc_tokens)
+        self.doc_tokens = [[token for token in document if token not in self.stopwords] for document in doc_tokens]
+        self.doc_norms = [self._norm(tokens) for tokens in doc_tokens]
+
+        for i, document in enumerate(self.doc_tokens):
+            for token in document:
                 if token not in self.index:
                     self.index[token] = [i]
                 elif self.index[token][-1] != i:
@@ -33,12 +40,11 @@ class TfIdfSearchEngine(SearchEngine):
                 if document_id in processed:
                     continue
                 processed.add(document_id)
-                document, document_tokens, document_norm = self.documents[document_id]
+                document_tokens, document_norm = self.doc_tokens[document_id], self.doc_norms[document_id]
                 dimensions = self._dimensions(query_tokens + document_tokens)
-                dfs = {token: len(self.index[token]) for token in dimensions.keys()}
                 query_vector = self._vectorize(query_tokens, dimensions)
                 document_vector = self._vectorize(document_tokens, dimensions)
-                similarity = sum([query_vector[i] * document_vector[i] / dfs[dim] for dim, i in dimensions.items()])
+                similarity = sum([query_vector[i] * document_vector[i] / self.df[dim] for dim, i in dimensions.items()])
                 similarity /= (query_norm * document_norm)
                 if similarity > top_hits[0][0]:
                     del top_hits[0]
@@ -48,7 +54,7 @@ class TfIdfSearchEngine(SearchEngine):
                             break
                         insert_location += 1
                     top_hits.insert(insert_location, (similarity, document_id))
-        return [(score, self.documents[doc_id][0]) for (score, doc_id) in reversed(top_hits)]
+        return [(score, self.documents[doc_id]) for (score, doc_id) in reversed(top_hits)]
 
     @staticmethod
     def _dimensions(tokens):

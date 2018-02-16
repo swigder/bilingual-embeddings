@@ -1,6 +1,7 @@
 import argparse
 
 from collections import defaultdict
+from math import sqrt
 
 import numpy as np
 from annoy import AnnoyIndex
@@ -10,40 +11,57 @@ from dictionary import BilingualDictionary, MonolingualDictionary
 
 
 class SearchEngine:
+    def __init__(self):
+        self.df = defaultdict(int)
+        self.stopwords = set()
+
     def index_documents(self, documents):
         pass
 
     def query_index(self, query, n_results=5):
         pass
 
+    def _init_df_stopwords(self, documents):
+        smoothing = sqrt(len(documents))
+
+        for document_tokens in documents:
+            for token in set(document_tokens):
+                self.df[token] += 1
+        for token, df in self.df.items():
+            self.df[token] = df + smoothing
+
+        max_df = .9 * (len(documents) + smoothing)
+        self.stopwords = set([token for token, df in self.df.items() if df >= max_df])
+
 
 class EmbeddingSearchEngine(SearchEngine):
     def __init__(self, dictionary):
+        super().__init__()
+
         self.dictionary = dictionary
         self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')
         self.documents = []
-        self.df = defaultdict(int)
         self.default_df = 1
-        self.stopwords = set()
 
     def index_documents(self, documents):
         doc_tokens = []
         for i, document in enumerate(documents):
             self.documents.append(document)
-            tokens = word_tokenize(document)
-            doc_tokens.append(tokens)
-            for token in set(tokens):
-                self.df[token] += 1
+            doc_tokens.append(word_tokenize(document))
+
+        self._init_df_stopwords(doc_tokens)
         self.default_df = np.average(list(self.df.values()))
-        max_df = .9 * len(documents)
-        self.stopwords = set([token for token, df in self.df.items() if df > max_df])
+
         for i, tokens in enumerate(doc_tokens):
             self.index.add_item(i, self._vectorize(tokens=tokens))
-        self.index.build(n_trees=30)
+        self.index.build(n_trees=10)
 
     def query_index(self, query, n_results=5):
         query_vector = self._vectorize(word_tokenize(query), indexing=False)
-        results, distances = self.index.get_nns_by_vector(query_vector, n=n_results, include_distances=True)
+        results, distances = self.index.get_nns_by_vector(query_vector,
+                                                          n=n_results,
+                                                          include_distances=True,
+                                                          search_k=10*len(self.documents))
         return [(distance, self.documents[result]) for result, distance in zip(results, distances)]
 
     def _vectorize(self, tokens, indexing=True):
