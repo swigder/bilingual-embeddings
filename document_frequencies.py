@@ -36,8 +36,6 @@ def df(in_file, out_file, min_count):
             total_docs += 1
             if total_docs % 1000 == 0:
                 print(total_docs, line)
-            if total_docs >= 1000:
-                break
             process_article(current_article, dfs)
             current_article = ''
         current_article += line.strip() + ' '
