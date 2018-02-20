@@ -22,7 +22,7 @@ class SearchEngine:
         pass
 
     def _init_df_stopwords(self, documents):
-        smoothing = sqrt(len(documents))
+        smoothing = int(sqrt(len(documents)))
 
         for document_tokens in documents:
             for token in set(document_tokens):
