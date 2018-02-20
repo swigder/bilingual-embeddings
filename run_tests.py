@@ -90,6 +90,14 @@ def sub_query(query_i, n=None, search_engine=None):
     test_search_engine(search_engine, query_collection, n=n, verbose=True)
 
 
+def print_df(search_engine, query_i):
+    from nltk import word_tokenize
+    from operator import itemgetter
+    dfs = {token: search_engine.df[token] for token in word_tokenize(ir_collection.queries[query_i])}
+    for token, df in sorted(dfs.items(), key=itemgetter(1)):
+        print(token, df)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='IR data reader.')
 
@@ -107,6 +115,20 @@ if __name__ == "__main__":
         args.ir_dir = '/Users/xx/Documents/school/kth/thesis/ir-datasets/'
     if not args.embed:
         args.embed = '/Users/xx/Downloads/MUSE-master/trained/vectors-en.txt'
+        # args.embed = '/Users/xx/Downloads/GoogleNews-vectors-negative300.bin.gz'
+    # While processing, articles are tokenized using the much faster 'split'.
+    # Here, we tokenize the tokens using a proper tokenizer.
+    print('Preprocessed tokens:', len(dfs))
+    to_update = {}
+    for super_token, count in dfs.items():
+        tokens = [super_token] if super_token.isalpha() else word_tokenize(super_token)
+        if len(tokens) > 1:
+            to_update[super_token] = (tokens, count)
+    print('Updating:', len(to_update))
+    for super_token, (sub_tokens, count) in to_update.items():
+        del dfs[super_token]
+        for sub_token in sub_tokens:
+            dfs[sub_token] += count
 
     reader = readers[args.type](os.path.join(args.ir_dir, args.type))
     ir_collection = reader.read_documents_queries_relevance()
@@ -126,5 +148,5 @@ if __name__ == "__main__":
         compare_search_engines(search_engines['Embedding'], search_engines['Baseline'],
                                ir_collection, n=args.number_results)
     else:
-        engine = list(search_engines.items())[0]
+        engine = list(search_engines.values())[0]
         test_search_engine(engine, ir_collection, n=args.number_results, verbose=args.verbose)
