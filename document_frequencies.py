@@ -34,23 +34,32 @@ def df(in_file, out_file, min_count):
     for line in in_file:
         if line[0] == '=' and line[1] != '=':  # new article
             total_docs += 1
-            if total_docs % 10000 == 0:
+            if total_docs % 1000 == 0:
                 print(total_docs, line)
+            if total_docs >= 1000:
+                break
             process_article(current_article, dfs)
             current_article = ''
         current_article += line.strip() + ' '
     process_article(current_article, dfs)
+    if in_file is not sys.stdout:
+        in_file.close()
 
     # Remove anything below min
     if min_count > 0:
+        to_delete = set()
         for token, count in dfs.items():
-            if token < min_count:
-                del dfs[token]
+            if count < min_count:
+                to_delete.add(token)
+        for token in to_delete:
+            del dfs[token]
 
     # Write to file
     out_file.write('{} {}\n'.format(total_docs, len(dfs)))
     for token, count in sorted(dfs.items(), key=operator.itemgetter(1), reverse=True):
         out_file.write('{} {}\n'.format(token, count))
+    if out_file is not sys.stdout:
+        out_file.close()
 
 
 if __name__ == "__main__":
