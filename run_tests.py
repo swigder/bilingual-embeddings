@@ -1,7 +1,13 @@
 import argparse
+import itertools
+import operator
 import os
 
 from collections import namedtuple
+
+from math import sqrt
+
+import numpy as np
 
 from dictionary import MonolingualDictionary
 from ir_data_reader import readers, sub_collection
@@ -10,6 +16,10 @@ from baseline import CosineSimilaritySearchEngine
 
 
 PrecisionRecall = namedtuple('PrecisionRecall', ['precision', 'recall'])
+
+
+def f1_score(precision, recall):
+    return 2 * precision * recall / (precision + recall)
 
 
 def precision_recall(expected, actual):
@@ -40,7 +50,7 @@ def query_result(search_engine, i, query, expected, documents, n=5, verbose=Fals
     return PrecisionRecall(precision, recall)
 
 
-def compare_search_engines(search_engine, baseline, collection, n=5):
+def compare_search_engines(search_engine, baseline, collection, n=5, print_details=True):
     total_precision, total_recall = 0, 0
     base_precision, base_recall = 0, 0
     doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
@@ -56,7 +66,7 @@ def compare_search_engines(search_engine, baseline, collection, n=5):
         base_precision += base_pr.precision
         base_recall += base_pr.recall
 
-        if engine_pr.precision < base_pr.precision or engine_pr.recall < base_pr.recall:
+        if print_details and engine_pr.precision < base_pr.precision or engine_pr.recall < base_pr.recall:
             query_result(search_engine, i, query, expected, doc_ids, n, verbose=True)
             print('System: {:.4f} / {:.4f}'.format(engine_pr.precision, engine_pr.recall))
             query_result(baseline, i, query, expected, doc_ids, n, verbose=True)
@@ -74,13 +84,49 @@ def test_search_engine(search_engine, collection, n=5, verbose=False):
     doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
     for i, query in collection.queries.items():
         expected = collection.relevance[i]
-        pr = query_result(search_engine, i, query, expected, doc_ids, n, verbose=True)
+        pr = query_result(search_engine, i, query, expected, doc_ids, n, verbose=verbose)
         total_precision += pr.precision
         total_recall += pr.recall
     if verbose:
         print()
-    print('Precision / Recall: {:.4f} / {:.4f}'.format(total_precision / len(collection.queries),
-                                                       total_recall / len(collection.queries)))
+    precision, recall = total_precision / len(collection.queries), total_recall / len(collection.queries)
+    # print('Precision / Recall: {:.4f} / {:.4f}'.format(precision, recall))
+    return precision, recall
+
+
+def compare_df_options():
+    df_cutoffs = [.8]
+    smoothing_fns = {
+        'none': lambda num_docs: 0,
+        'one': lambda num_docs: 1,
+        'sqrt': lambda num_docs: int(sqrt(num_docs)),
+    }
+    default_df_fns = {
+        'zero': lambda dfs, smoothing: 0,
+        'min': lambda dfs, smoothing: np.min(dfs),
+        'avg': lambda dfs, smoothing: np.average(dfs),
+        'avg-minus-smoothing': lambda dfs, smoothing: np.average(dfs) - smoothing,
+        'smoothing': lambda dfs, smoothing: max(smoothing, 1)
+    }
+    percentiles = [None, 5, 100]
+    df_option_options = [df_cutoffs, smoothing_fns.items(), default_df_fns.items(), percentiles]
+    results = {}
+    for df_file in [None, '/Users/xx/Downloads/wiki-df-100.txt']:
+        for current_options in itertools.product(*df_option_options):
+            df_cutoff, smoothing_fn, default_df_fn, percentile = current_options
+            if smoothing_fn[0] == 'none' and default_df_fn[0] == 'avg-minus-smoothing':
+                continue
+            df_config = {'df_cutoff': df_cutoff,
+                         'smoothing_fn': smoothing_fn[1],
+                         'default_df_fn': default_df_fn[1],
+                         'percentiles': percentile}
+            search_engine = EmbeddingSearchEngine(dictionary=mono_dict, df_file=df_file, df_options=df_config)
+            search_engine.index_documents(ir_collection.documents.values())
+            precision, recall = test_search_engine(search_engine, ir_collection, verbose=False)
+            key = df_file, df_cutoff, smoothing_fn[0], default_df_fn[0], percentile
+            results[key] = f1_score(precision, recall)
+    for k, v in sorted(results.items(), key=operator.itemgetter(1), reverse=True):
+        print('{} {:.4f}'.format(k, v))
 
 
 def sub_query(query_i, n=None, search_engine=None):
@@ -108,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-b', '--baseline', action='store_true')
     parser.add_argument('-c', '--compare', action='store_true')
+    parser.add_argument('-d', '--df_file', type=str, help='File with precomputed df', default=None)
 
     args = parser.parse_args()
 
@@ -116,19 +163,6 @@ if __name__ == "__main__":
     if not args.embed:
         args.embed = '/Users/xx/Downloads/MUSE-master/trained/vectors-en.txt'
         # args.embed = '/Users/xx/Downloads/GoogleNews-vectors-negative300.bin.gz'
-    # While processing, articles are tokenized using the much faster 'split'.
-    # Here, we tokenize the tokens using a proper tokenizer.
-    print('Preprocessed tokens:', len(dfs))
-    to_update = {}
-    for super_token, count in dfs.items():
-        tokens = [super_token] if super_token.isalpha() else word_tokenize(super_token)
-        if len(tokens) > 1:
-            to_update[super_token] = (tokens, count)
-    print('Updating:', len(to_update))
-    for super_token, (sub_tokens, count) in to_update.items():
-        del dfs[super_token]
-        for sub_token in sub_tokens:
-            dfs[sub_token] += count
 
     reader = readers[args.type](os.path.join(args.ir_dir, args.type))
     ir_collection = reader.read_documents_queries_relevance()
@@ -137,16 +171,18 @@ if __name__ == "__main__":
 
     if args.compare or not args.baseline:
         mono_dict = MonolingualDictionary(emb_file=args.embed)
-        search_engines['Embedding'] = EmbeddingSearchEngine(dictionary=mono_dict)
+        search_engines['Embedding'] = EmbeddingSearchEngine(dictionary=mono_dict, df_file=args.df_file)
     if args.compare or args.baseline:
         search_engines['Baseline'] = CosineSimilaritySearchEngine()
 
-    for engine in search_engines.values():
-        engine.index_documents(ir_collection.documents.values())
+    # for engine in search_engines.values():
+    #     engine.index_documents(ir_collection.documents.values())
+    #
+    # if args.compare:
+    #     compare_search_engines(search_engines['Embedding'], search_engines['Baseline'],
+    #                            ir_collection, n=args.number_results)
+    # else:
+    #     engine = list(search_engines.values())[0]
+    #     test_search_engine(engine, ir_collection, n=args.number_results, verbose=args.verbose)
 
-    if args.compare:
-        compare_search_engines(search_engines['Embedding'], search_engines['Baseline'],
-                               ir_collection, n=args.number_results)
-    else:
-        engine = list(search_engines.values())[0]
-        test_search_engine(engine, ir_collection, n=args.number_results, verbose=args.verbose)
+    compare_df_options()
