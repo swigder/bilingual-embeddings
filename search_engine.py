@@ -1,19 +1,25 @@
 import argparse
 
 from collections import defaultdict
-from math import sqrt
+from math import sqrt, log
 
 import numpy as np
 from annoy import AnnoyIndex
 from nltk import word_tokenize
 
 from dictionary import BilingualDictionary, MonolingualDictionary
+from document_frequencies import read_dfs
 
 
 class SearchEngine:
-    def __init__(self):
+    def __init__(self, df_file=None, df_options={}):
+        self.df_options = df_options
         self.df = defaultdict(int)
-        self.stopwords = set()
+        if df_file is None:
+            self.stopwords = set()
+        else:
+            df, num_docs = read_dfs(df_file)
+            self._init_df_stopwords(df=df, num_docs=num_docs, **self.df_options)
 
     def index_documents(self, documents):
         pass
@@ -21,27 +27,44 @@ class SearchEngine:
     def query_index(self, query, n_results=5):
         pass
 
-    def _init_df_stopwords(self, documents):
-        smoothing = int(sqrt(len(documents)))
+    def _init_df_stopwords(self, documents=None, df=None, num_docs=None,
+                           df_cutoff=.8,
+                           smoothing_fn=lambda num_docs: int(sqrt(num_docs)),
+                           default_df_fn=lambda dfs, smoothing: np.average(list(dfs)),
+                           percentiles=None):
+        if len(self.df) > 0:
+            return
 
-        for document_tokens in documents:
-            for token in set(document_tokens):
-                self.df[token] += 1
+        assert (documents is None) != (df is None)  # documents xor df
+        if documents is not None:
+            num_docs = len(documents)
+            for document_tokens in documents:
+                for token in set(document_tokens):
+                    self.df[token] += 1
+        else:
+            self.df = df
+
+        if percentiles:
+            for token, df in self.df.items():
+                self.df[token] = int(df / num_docs * percentiles) + 1
+
+        smoothing = smoothing_fn(num_docs)
         for token, df in self.df.items():
             self.df[token] = df + smoothing
 
-        max_df = .9 * (len(documents) + smoothing)
-        self.stopwords = set([token for token, df in self.df.items() if df >= max_df])
+        df_cutoff = int(df_cutoff * (num_docs + smoothing))
+        self.stopwords = set([token for token, df in self.df.items() if df >= df_cutoff])
+
+        self.default_df = default_df_fn(list(self.df.values()), smoothing)
 
 
 class EmbeddingSearchEngine(SearchEngine):
-    def __init__(self, dictionary):
-        super().__init__()
+    def __init__(self, dictionary, df_file=None, df_options={}):
+        super().__init__(df_file, df_options)
 
         self.dictionary = dictionary
         self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')
         self.documents = []
-        self.default_df = 1
 
     def index_documents(self, documents):
         doc_tokens = []
@@ -49,8 +72,7 @@ class EmbeddingSearchEngine(SearchEngine):
             self.documents.append(document)
             doc_tokens.append(word_tokenize(document))
 
-        self._init_df_stopwords(doc_tokens)
-        self.default_df = np.average(list(self.df.values()))
+        self._init_df_stopwords(doc_tokens, **self.df_options)
 
         for i, tokens in enumerate(doc_tokens):
             self.index.add_item(i, self._vectorize(tokens=tokens))
@@ -69,7 +91,9 @@ class EmbeddingSearchEngine(SearchEngine):
         for token in tokens:
             if token in self.stopwords:
                 continue
-            vector += self.dictionary.word_vector(token=token) / self.df.get(token, self.default_df)
+            df = self.df.get(token, self.default_df)
+            if df != 0:
+                vector += self.dictionary.word_vector(token=token) / df
         return vector
 
 
