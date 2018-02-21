@@ -1,8 +1,8 @@
 import argparse
 import operator
-import sys
 from collections import defaultdict
 
+import os
 from nltk import word_tokenize
 
 
@@ -10,7 +10,12 @@ sub_tokens = {}
 
 
 def process_article(article_text, dfs):
-    rough_tokens = set(article_text.replace('=', ' ').replace(',', ' ').lower().split())
+    rough_tokens = set(article_text.replace('=', ' ')
+                       .replace(', ', ' ')
+                       .replace('. ', ' ')
+                       .replace('(', ' ')
+                       .replace(')', '')
+                       .lower().split())
     tokens = set()
     for token in rough_tokens:
         if token.isalpha():
@@ -25,25 +30,37 @@ def process_article(article_text, dfs):
         dfs[token] += 1
 
 
-def df(in_file, out_file, min_count):
-    # Process input file
+def compute_dfs(in_file_path, out_file_path, min_count=0, max_docs=-1, save_rate=10000):
+    os.remove(out_file_path) # so don't merge old data
+
     dfs = defaultdict(int)
     total_docs = 0
+    offset = 0
 
-    current_article = ''
-    for line in in_file:
-        if line[0] == '=' and line[1] != '=':  # new article
-            total_docs += 1
-            if total_docs % 1000 == 0:
-                print(total_docs, line)
-            process_article(current_article, dfs)
-            current_article = ''
-        current_article += line.strip() + ' '
-    process_article(current_article, dfs)
-    if in_file is not sys.stdout:
-        in_file.close()
+    with open(in_file_path, 'r') as in_file:
+        current_article = ''
+        for line in in_file:
+            if line[0] == '=' and line[1] != '=':  # new article
+                total_docs += 1
+                if total_docs % 1000 == 0:
+                    print('Processing', total_docs, line)
+                if total_docs % save_rate == 0:
+                    print('Saving at', total_docs, line)
+                    write_to_file(out_file_path, dfs, num_docs=total_docs-offset, min_count=min_count)
+                    dfs.clear()
+                    sub_tokens.clear()
+                    offset = total_docs
+                if -1 < max_docs <= total_docs:
+                    break
+                process_article(current_article, dfs)
+                current_article = ''
+            current_article += line.strip() + ' '
+        process_article(current_article, dfs)
 
-    # Remove anything below min
+    write_to_file(out_file_path, dfs, num_docs=total_docs-offset, min_count=min_count)
+
+
+def write_to_file(file_path, dfs, num_docs, min_count):
     if min_count > 0:
         to_delete = set()
         for token, count in dfs.items():
@@ -52,21 +69,41 @@ def df(in_file, out_file, min_count):
         for token in to_delete:
             del dfs[token]
 
-    # Write to file
-    out_file.write('{} {}\n'.format(total_docs, len(dfs)))
-    for token, count in sorted(dfs.items(), key=operator.itemgetter(1), reverse=True):
-        out_file.write('{} {}\n'.format(token, count))
-    if out_file is not sys.stdout:
-        out_file.close()
+    try:
+        dfs_2, num_docs_2 = read_dfs(file_path)
+        num_docs += num_docs_2
+        for k, v in dfs_2.items():
+            dfs[k] += v
+    except FileNotFoundError:
+        pass  # nothing to merge
+
+    with open(file_path, 'w') as out_file:
+        out_file.write('{} {}\n'.format(num_docs, len(dfs)))
+        for token, count in sorted(dfs.items(), key=operator.itemgetter(1), reverse=True):
+            out_file.write('{} {}\n'.format(token, count))
+
+
+def read_dfs(file_name):
+    dfs = defaultdict()
+    with open(file_name, 'r') as file:
+        num_docs, vocab_size = map(int, file.readline().strip().split())
+        for line in file:
+            token, count = line.strip().split()
+            count = int(count)
+            dfs[token] = count
+    assert vocab_size == len(dfs)
+    return dfs, num_docs
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Document Frequency Calculator')
 
-    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
-    parser.add_argument('outfile', nargs='?', type=argparse.FileType('w+'), default=sys.stdout)
-    parser.add_argument('-m', '--min', type=int, default=0, help='Minimum count to output')
+    parser.add_argument('infile', type=str, help='Input file as parsed wiki')
+    parser.add_argument('outfile', type=str, help='Output file')
+    parser.add_argument('-m', '--min_count', type=int, default=0, help='Minimum count to output')
+    parser.add_argument('-d', '--max_documents', type=int, default=-1, help='Maximum number of articles to process')
+    parser.add_argument('-r', '--read', type=bool, default=False)
 
     args = parser.parse_args()
 
-    df(args.infile, args.outfile, min_count=args.min)
+    compute_dfs(args.infile, args.outfile, min_count=args.min_count, max_docs=args.max_documents)
