@@ -7,6 +7,12 @@ from collections import namedtuple
 IrCollection = namedtuple('IrCollection', ['documents', 'queries', 'relevance'])
 
 
+def sub_collection(ir_collection, query):
+    return IrCollection(ir_collection.documents,
+                        {query: ir_collection.queries[query]},
+                        {query: ir_collection.relevance[query]})
+
+
 def dir_appender(dir_location):
     return lambda file: os.path.join(dir_location, file)
 
@@ -81,7 +87,7 @@ class IrDataReader:
 class TimeReader(IrDataReader):
     def __init__(self, data_dir):
         f = dir_appender(data_dir)
-        IrDataReader.__init__(self, doc_file=f('TIME.ALL'), query_file=f('TIME.QUE'), relevance_file=f('TIME.REL'))
+        super().__init__(doc_file=f('TIME.ALL'), query_file=f('TIME.QUE'), relevance_file=f('TIME.REL'))
         self.id = 0
 
     def extract_doc_id(self, line):
@@ -99,11 +105,14 @@ class TimeReader(IrDataReader):
         doc_id, *judgements = map(int, line.split())
         return doc_id, judgements
 
+    def skip_line(self, line):
+        return line.startswith('*STOP')
+
 
 class AdiReader(IrDataReader):
     def __init__(self, data_dir):
         f = dir_appender(data_dir)
-        IrDataReader.__init__(self, doc_file=f('ADI.ALL'), query_file=f('ADI.QRY'), relevance_file=f('ADI.REL'))
+        super().__init__(doc_file=f('ADI.ALL'), query_file=f('ADI.QRY'), relevance_file=f('ADI.REL'))
 
     @staticmethod
     def extract_id(line):
