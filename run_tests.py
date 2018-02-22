@@ -108,22 +108,24 @@ def compare_df_options():
         'avg-minus-smoothing': lambda dfs, smoothing: np.average(dfs) - smoothing,
         'smoothing': lambda dfs, smoothing: max(smoothing, 1)
     }
-    percentiles = [None, 5, 100]
-    df_option_options = [df_cutoffs, smoothing_fns.items(), default_df_fns.items(), percentiles]
+    bucket_options = [None, 5, 10, 100]
+    df_option_options = [df_cutoffs, smoothing_fns.items(), default_df_fns.items(), bucket_options]
     results = {}
-    for df_file in [None, '/Users/xx/Downloads/wiki-df-100.txt']:
+    for df_file in [None, '/Users/xx/thesis/wiki-df/wiki-df-fasttext.txt']:
         for current_options in itertools.product(*df_option_options):
-            df_cutoff, smoothing_fn, default_df_fn, percentile = current_options
+            df_cutoff, smoothing_fn, default_df_fn, buckets = current_options
             if smoothing_fn[0] == 'none' and default_df_fn[0] == 'avg-minus-smoothing':
+                continue
+            if df_file is not None and buckets is None:
                 continue
             df_config = {'df_cutoff': df_cutoff,
                          'smoothing_fn': smoothing_fn[1],
                          'default_df_fn': default_df_fn[1],
-                         'percentiles': percentile}
+                         'buckets': buckets}
             search_engine = EmbeddingSearchEngine(dictionary=mono_dict, df_file=df_file, df_options=df_config)
             search_engine.index_documents(ir_collection.documents.values())
             precision, recall = test_search_engine(search_engine, ir_collection, verbose=False)
-            key = df_file, df_cutoff, smoothing_fn[0], default_df_fn[0], percentile
+            key = df_file, df_cutoff, smoothing_fn[0], default_df_fn[0], buckets
             results[key] = f1_score(precision, recall)
     for k, v in sorted(results.items(), key=operator.itemgetter(1), reverse=True):
         print('{} {:.4f}'.format(k, v))
@@ -161,7 +163,7 @@ if __name__ == "__main__":
     if not args.ir_dir:
         args.ir_dir = '/Users/xx/Documents/school/kth/thesis/ir-datasets/'
     if not args.embed:
-        args.embed = '/Users/xx/Downloads/MUSE-master/trained/vectors-en.txt'
+        args.embed = '/Users/xx/thesis/bivecs-muse/wiki.multi.en.vec'
         # args.embed = '/Users/xx/Downloads/GoogleNews-vectors-negative300.bin.gz'
 
     reader = readers[args.type](os.path.join(args.ir_dir, args.type))

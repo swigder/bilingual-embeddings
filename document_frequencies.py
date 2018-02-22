@@ -1,57 +1,52 @@
 import argparse
 import operator
+import os
+import time
+
 from collections import defaultdict
 
-import os
-from nltk import word_tokenize
+from text_tools import normalize, tokenize
 
 
-sub_tokens = {}
+start = time.time()
+
+
+def print_with_time(string):
+    elapsed = time.time() - start
+    print('{} (+{:.2f}s) {}'.format(time.strftime('%a %H:%M:%S'), elapsed, string))
 
 
 def process_article(article_text, dfs):
-    rough_tokens = set(article_text.replace('=', ' ')
-                       .replace(', ', ' ')
-                       .replace('. ', ' ')
-                       .replace('(', ' ')
-                       .replace(')', '')
-                       .lower().split())
-    tokens = set()
-    for token in rough_tokens:
-        if token.isalpha():
-            tokens.add(token)
-        elif token in sub_tokens:
-            tokens.update(sub_tokens[token])
-        else:
-            tokenized = word_tokenize(token)
-            sub_tokens[token] = tokenized
-            tokens.update(tokenized)
+    tokens = set(tokenize(normalize(article_text)))
     for token in tokens:
+        tokens.add(token)
         dfs[token] += 1
 
 
-def compute_dfs(in_file_path, out_file_path, min_count=0, max_docs=-1, save_rate=10000):
-    try:
-        os.remove(out_file_path) # so don't merge old data
-    except FileNotFoundError:
-        pass
+def compute_dfs(in_file_path, out_file_path, min_count=0, max_docs=-1, save_rate=100000, start_offset=0):
+    if start_offset == 0:
+        try:
+            os.remove(out_file_path)  # so don't merge old data
+        except FileNotFoundError:
+            pass
 
     dfs = defaultdict(int)
     total_docs = 0
-    offset = 0
+    offset = start_offset
 
     with open(in_file_path, 'r') as in_file:
         current_article = ''
         for line in in_file:
             if line[0] == '=' and line[1] != '=':  # new article
                 total_docs += 1
-                if total_docs % 1000 == 0:
-                    print('Processing', total_docs, line)
+                if 0 < start_offset < total_docs:
+                    continue
+                if total_docs % 10000 == 0:
+                    print_with_time('Processing {} {}'.format(total_docs, line))
                 if total_docs % save_rate == 0:
-                    print('Saving at', total_docs, line)
+                    print_with_time('Saving at {} {}'.format(total_docs, line))
                     write_to_file(out_file_path, dfs, num_docs=total_docs-offset, merge=True)
                     dfs.clear()
-                    sub_tokens.clear()
                     offset = total_docs
                 if -1 < max_docs <= total_docs:
                     break
@@ -90,6 +85,7 @@ def merge_low_df_files(file_path, dfs):
             with open(count_path, 'r') as file:
                 for line in file:
                     dfs[line.strip()] += count
+            os.remove(count_path)
         except FileNotFoundError:
             pass
 
@@ -126,7 +122,7 @@ def write_to_file(file_path, dfs, num_docs, min_count=0, merge=False):
 
 
 def read_dfs(file_name):
-    dfs = defaultdict()
+    dfs = defaultdict(int)
     with open(file_name, 'r') as file:
         num_docs, vocab_size = map(int, file.readline().strip().split())
         for line in file:
