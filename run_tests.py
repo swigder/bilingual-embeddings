@@ -1,29 +1,26 @@
 import argparse
-import itertools
-import operator
 import os
-
 from collections import namedtuple
 
-from math import sqrt
-
-import numpy as np
-
+from baseline import CosineSimilaritySearchEngine
 from dictionary import MonolingualDictionary
 from ir_data_reader import readers, sub_collection
 from search_engine import EmbeddingSearchEngine
-from baseline import CosineSimilaritySearchEngine
 
 
 PrecisionRecall = namedtuple('PrecisionRecall', ['precision', 'recall'])
 
 
 def f1_score(precision, recall):
+    if precision == 0 or recall == 0:
+        return 0
     return 2 * precision * recall / (precision + recall)
 
 
 def precision_recall(expected, actual):
     true_positives = sum([1 for item in expected if item in actual])
+    if true_positives is 0:
+        return 0, 0
     return true_positives / len(actual), true_positives / len(expected)
 
 
@@ -90,45 +87,8 @@ def test_search_engine(search_engine, collection, n=5, verbose=False):
     if verbose:
         print()
     precision, recall = total_precision / len(collection.queries), total_recall / len(collection.queries)
-    # print('Precision / Recall: {:.4f} / {:.4f}'.format(precision, recall))
+    print('Precision / Recall: {:.4f} / {:.4f}'.format(precision, recall))
     return precision, recall
-
-
-def compare_df_options():
-    df_cutoffs = [.8]
-    smoothing_fns = {
-        'none': lambda num_docs: 0,
-        'one': lambda num_docs: 1,
-        'sqrt': lambda num_docs: int(sqrt(num_docs)),
-    }
-    default_df_fns = {
-        'zero': lambda dfs, smoothing: 0,
-        'min': lambda dfs, smoothing: np.min(dfs),
-        'avg': lambda dfs, smoothing: np.average(dfs),
-        'avg-minus-smoothing': lambda dfs, smoothing: np.average(dfs) - smoothing,
-        'smoothing': lambda dfs, smoothing: max(smoothing, 1)
-    }
-    bucket_options = [None, 5, 10, 100]
-    df_option_options = [df_cutoffs, smoothing_fns.items(), default_df_fns.items(), bucket_options]
-    results = {}
-    for df_file in [None, '/Users/xx/thesis/wiki-df/wiki-df-fasttext.txt']:
-        for current_options in itertools.product(*df_option_options):
-            df_cutoff, smoothing_fn, default_df_fn, buckets = current_options
-            if smoothing_fn[0] == 'none' and default_df_fn[0] == 'avg-minus-smoothing':
-                continue
-            if df_file is not None and buckets is None:
-                continue
-            df_config = {'df_cutoff': df_cutoff,
-                         'smoothing_fn': smoothing_fn[1],
-                         'default_df_fn': default_df_fn[1],
-                         'buckets': buckets}
-            search_engine = EmbeddingSearchEngine(dictionary=mono_dict, df_file=df_file, df_options=df_config)
-            search_engine.index_documents(ir_collection.documents.values())
-            precision, recall = test_search_engine(search_engine, ir_collection, verbose=False)
-            key = df_file, df_cutoff, smoothing_fn[0], default_df_fn[0], buckets
-            results[key] = f1_score(precision, recall)
-    for k, v in sorted(results.items(), key=operator.itemgetter(1), reverse=True):
-        print('{} {:.4f}'.format(k, v))
 
 
 def sub_query(query_i, n=None, search_engine=None):
@@ -177,14 +137,13 @@ if __name__ == "__main__":
     if args.compare or args.baseline:
         search_engines['Baseline'] = CosineSimilaritySearchEngine()
 
-    # for engine in search_engines.values():
-    #     engine.index_documents(ir_collection.documents.values())
-    #
-    # if args.compare:
-    #     compare_search_engines(search_engines['Embedding'], search_engines['Baseline'],
-    #                            ir_collection, n=args.number_results)
-    # else:
-    #     engine = list(search_engines.values())[0]
-    #     test_search_engine(engine, ir_collection, n=args.number_results, verbose=args.verbose)
+    for engine in search_engines.values():
+        engine.index_documents(ir_collection.documents.values())
 
-    compare_df_options()
+    if args.compare:
+        compare_search_engines(search_engines['Embedding'], search_engines['Baseline'],
+                               ir_collection, n=args.number_results)
+    else:
+        for engine in search_engines.values():
+            test_search_engine(engine, ir_collection, n=args.number_results, verbose=args.verbose)
+

@@ -6,8 +6,8 @@ from text_tools import tokenize, normalize
 
 
 class CosineSimilaritySearchEngine(SearchEngine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, tf_idf_options={}):
+        super().__init__(**tf_idf_options)
         self.index = {}
         self.documents = []
         self.doc_tokens = []
@@ -18,7 +18,7 @@ class CosineSimilaritySearchEngine(SearchEngine):
         doc_tokens = []
         for document in documents:
             doc_tokens.append(tokenize(normalize(document)))
-        self._init_df_stopwords(doc_tokens)
+        self._init_word_weights_stopwords(doc_tokens, **self.word_weight_options)
         self.doc_tokens = [[token for token in document if token not in self.stopwords] for document in doc_tokens]
         self.doc_norms = [self._norm(tokens) for tokens in doc_tokens]
 
@@ -43,7 +43,7 @@ class CosineSimilaritySearchEngine(SearchEngine):
                 dimensions = self._dimensions(query_tokens + document_tokens)
                 query_vector = self._vectorize(query_tokens, dimensions)
                 document_vector = self._vectorize(document_tokens, dimensions)
-                similarity = sum([query_vector[i] * document_vector[i] / self.df[dim] for dim, i in dimensions.items()])
+                similarity = sum([query_vector[i] * document_vector[i] * self.word_weights[dim] for dim, i in dimensions.items()])
                 similarity /= (query_norm * document_norm)
                 if similarity > top_hits[0][0]:
                     del top_hits[0]
@@ -53,18 +53,19 @@ class CosineSimilaritySearchEngine(SearchEngine):
                             break
                         insert_location += 1
                     top_hits.insert(insert_location, (similarity, document_id))
-        return [(score, self.documents[doc_id]) for (score, doc_id) in reversed(top_hits)]
+        return [(score, self.documents[doc_id]) for (score, doc_id) in reversed(top_hits) if doc_id is not None]
 
-    @staticmethod
-    def _dimensions(tokens):
-            return {token: i for (i, token) in enumerate(list(set(tokens)))}
+    def _dimensions(self, tokens):
+        cleaned_tokens = list(set([token for token in tokens if token in self.word_weights]))
+        return {token: i for (i, token) in enumerate(cleaned_tokens)}
 
-    @staticmethod
-    def _vectorize(tokens, dimensions):
+    def _vectorize(self, tokens, dimensions):
         vector = [0] * len(dimensions)
         for token in tokens:
             if token in dimensions:
                 vector[dimensions[token]] += 1
+        for dimension, value in enumerate(vector):
+            vector[dimension] = self.tf_function(value)
         return vector
 
     @staticmethod
