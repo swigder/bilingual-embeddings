@@ -1,14 +1,14 @@
 import argparse
 
 from collections import defaultdict
-from math import sqrt, log
+from math import sqrt
 
 import numpy as np
 from annoy import AnnoyIndex
-from nltk import word_tokenize
 
 from dictionary import BilingualDictionary, MonolingualDictionary
 from document_frequencies import read_dfs
+from text_tools import normalize, tokenize
 
 
 class SearchEngine:
@@ -31,7 +31,7 @@ class SearchEngine:
                            df_cutoff=.8,
                            smoothing_fn=lambda num_docs: int(sqrt(num_docs)),
                            default_df_fn=lambda dfs, smoothing: np.average(list(dfs)),
-                           percentiles=None):
+                           buckets=None):
         if len(self.df) > 0:
             return
 
@@ -44,9 +44,9 @@ class SearchEngine:
         else:
             self.df = df
 
-        if percentiles:
+        if buckets:
             for token, df in self.df.items():
-                self.df[token] = int(df / num_docs * percentiles) + 1
+                self.df[token] = int(df / num_docs * buckets) + 1
 
         smoothing = smoothing_fn(num_docs)
         for token, df in self.df.items():
@@ -70,7 +70,7 @@ class EmbeddingSearchEngine(SearchEngine):
         doc_tokens = []
         for i, document in enumerate(documents):
             self.documents.append(document)
-            doc_tokens.append(word_tokenize(document))
+            doc_tokens.append(tokenize(normalize(document)))
 
         self._init_df_stopwords(doc_tokens, **self.df_options)
 
@@ -79,7 +79,7 @@ class EmbeddingSearchEngine(SearchEngine):
         self.index.build(n_trees=10)
 
     def query_index(self, query, n_results=5):
-        query_vector = self._vectorize(word_tokenize(query), indexing=False)
+        query_vector = self._vectorize(tokenize(normalize(query)), indexing=False)
         results, distances = self.index.get_nns_by_vector(query_vector,
                                                           n=n_results,
                                                           include_distances=True,

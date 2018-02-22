@@ -1,9 +1,8 @@
 from collections import defaultdict
 from math import sqrt
 
-from nltk import word_tokenize
-
 from search_engine import SearchEngine
+from text_tools import tokenize, normalize
 
 
 class CosineSimilaritySearchEngine(SearchEngine):
@@ -18,7 +17,7 @@ class CosineSimilaritySearchEngine(SearchEngine):
         self.documents = list(documents)
         doc_tokens = []
         for document in documents:
-            doc_tokens.append(word_tokenize(document))
+            doc_tokens.append(tokenize(normalize(document)))
         self._init_df_stopwords(doc_tokens)
         self.doc_tokens = [[token for token in document if token not in self.stopwords] for document in doc_tokens]
         self.doc_norms = [self._norm(tokens) for tokens in doc_tokens]
@@ -31,7 +30,7 @@ class CosineSimilaritySearchEngine(SearchEngine):
                     self.index[token].append(i)
 
     def query_index(self, query, n_results=5):
-        query_tokens = [word for word in word_tokenize(query) if word in self.index]
+        query_tokens = [word for word in tokenize(normalize(query)) if word in self.index]
         query_norm = self._norm(query_tokens)
         processed = set()
         top_hits = [(0, None)] * n_results  # using simple array with assumption that n_results is small
