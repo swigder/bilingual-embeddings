@@ -1,7 +1,7 @@
 import argparse
 
 from collections import defaultdict
-from math import sqrt
+from math import log
 
 import numpy as np
 from annoy import AnnoyIndex
@@ -12,14 +12,15 @@ from text_tools import normalize, tokenize
 
 
 class SearchEngine:
-    def __init__(self, df_file=None, df_options={}):
-        self.df_options = df_options
-        self.df = defaultdict(int)
-        if df_file is None:
-            self.stopwords = set()
-        else:
-            df, num_docs = read_dfs(df_file)
-            self._init_df_stopwords(df=df, num_docs=num_docs, **self.df_options)
+    def __init__(self,
+                 tf_function=lambda tf: (1 + log(tf, 10) if tf is not 0 else 0),
+                 df_options={}):
+        self.tf_function = tf_function
+        self.word_weight_options = df_options
+        self.word_weights = defaultdict(int)
+        self.stopwords = set()
+        if 'df_file' in df_options and df_options['df_file'] is not None:
+            self._init_word_weights_stopwords(**df_options)
 
     def index_documents(self, documents):
         pass
@@ -27,35 +28,28 @@ class SearchEngine:
     def query_index(self, query, n_results=5):
         pass
 
-    def _init_df_stopwords(self, documents=None, df=None, num_docs=None,
-                           df_cutoff=.8,
-                           smoothing_fn=lambda num_docs: int(sqrt(num_docs)),
-                           default_df_fn=lambda dfs, smoothing: np.average(list(dfs)),
-                           buckets=None):
-        if len(self.df) > 0:
+    def _init_word_weights_stopwords(self, documents=None, df_file=None,
+                                     df_cutoff=.8,
+                                     df_to_weight=lambda df, num_docs: log(num_docs / df, 10),
+                                     default_df_fn=lambda dfs: np.average(list(dfs))):
+        if len(self.word_weights) > 0:
             return
 
-        assert (documents is None) != (df is None)  # documents xor df
+        assert (documents is None) != (df_file is None)  # documents xor df_file
+        dfs = defaultdict(int)
         if documents is not None:
             num_docs = len(documents)
             for document_tokens in documents:
                 for token in set(document_tokens):
-                    self.df[token] += 1
+                    dfs[token] += 1
         else:
-            self.df = df
+            dfs, num_docs = read_dfs(df_file)
 
-        if buckets:
-            for token, df in self.df.items():
-                self.df[token] = int(df / num_docs * buckets) + 1
+        df_cutoff = int(df_cutoff * num_docs)
+        self.stopwords = set([token for token, df in dfs.items() if df >= df_cutoff])
 
-        smoothing = smoothing_fn(num_docs)
-        for token, df in self.df.items():
-            self.df[token] = df + smoothing
-
-        df_cutoff = int(df_cutoff * (num_docs + smoothing))
-        self.stopwords = set([token for token, df in self.df.items() if df >= df_cutoff])
-
-        self.default_df = default_df_fn(list(self.df.values()), smoothing)
+        self.word_weights = {token: df_to_weight(df, num_docs) for token, df in dfs.items()}
+        self.default_word_weight = default_df_fn(list(self.word_weights.values()))
 
 
 class EmbeddingSearchEngine(SearchEngine):
@@ -72,7 +66,7 @@ class EmbeddingSearchEngine(SearchEngine):
             self.documents.append(document)
             doc_tokens.append(tokenize(normalize(document)))
 
-        self._init_df_stopwords(doc_tokens, **self.df_options)
+        self._init_word_weights_stopwords(doc_tokens, **self.word_weight_options)
 
         for i, tokens in enumerate(doc_tokens):
             self.index.add_item(i, self._vectorize(tokens=tokens))
@@ -91,9 +85,7 @@ class EmbeddingSearchEngine(SearchEngine):
         for token in tokens:
             if token in self.stopwords:
                 continue
-            df = self.df.get(token, self.default_df)
-            if df != 0:
-                vector += self.dictionary.word_vector(token=token) / df
+            vector += self.dictionary.word_vector(token=token) * self.word_weights.get(token, self.default_word_weight)
         return vector
 
 
