@@ -105,6 +105,9 @@ class TimeReader(IrDataReader):
         doc_id, *judgements = map(int, line.split())
         return doc_id, judgements
 
+    def skip_line(self, line):
+        return line.startswith('*STOP')
+
 
 class AdiReader(IrDataReader):
     def __init__(self, data_dir):
