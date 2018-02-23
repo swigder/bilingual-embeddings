@@ -145,6 +145,26 @@ def print_description(items, description):
     print(keys[1], ':', items[keys[1]][:300])
 
 
+def print_query_oov_rate(ir_collection):
+    from nltk import word_tokenize
+    document_tokens = set()
+    for document in ir_collection.documents.values():
+        document_tokens.update(word_tokenize(document))
+    in_vocabulary = 0
+    out_of_vocabulary = 0
+    for query in ir_collection.queries.values():
+        for token in word_tokenize(query):
+            if token in document_tokens:
+                in_vocabulary += 1
+            else:
+                out_of_vocabulary += 1
+    print()
+    print('In vocabulary {}, Out of vocabulary {}, OOV rate {}'
+          .format(in_vocabulary,
+                  out_of_vocabulary,
+                  out_of_vocabulary / (in_vocabulary + out_of_vocabulary)))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='IR data reader.')
 
@@ -155,5 +175,8 @@ if __name__ == "__main__":
 
     reader = readers[args.type](os.path.join(args.dir, args.type))
 
-    for name, item in reader.read_documents_queries_relevance()._asdict().items():
+    ir_collection = reader.read_documents_queries_relevance()
+    for name, item in ir_collection._asdict().items():
         print_description(item, name)
+
+    print_query_oov_rate(ir_collection)
