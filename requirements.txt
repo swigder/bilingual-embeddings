@@ -1,4 +1,3 @@
 annoy
 gensim
-nltk
 numpy
