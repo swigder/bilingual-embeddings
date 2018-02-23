@@ -150,7 +150,7 @@ class OhsuReader(IrDataReader):
 
     def extract_query_id(self, line):
         if line.startswith('<num>'):
-            return line.split(':')[1]
+            return line.split(':')[1].strip()
 
     def extract_relevance(self, line):
         query_id, doc_id = line.split()[0:2]
