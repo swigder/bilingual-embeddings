@@ -120,12 +120,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if not args.ir_dir:
-        args.ir_dir = '/Users/xx/Documents/school/kth/thesis/ir-datasets/'
-    if not args.embed:
-        args.embed = '/Users/xx/thesis/bivecs-muse/wiki.multi.en.vec'
-        # args.embed = '/Users/xx/Downloads/GoogleNews-vectors-negative300.bin.gz'
-
+    
     reader = readers[args.type](os.path.join(args.ir_dir, args.type))
     ir_collection = reader.read_documents_queries_relevance()
 
@@ -146,4 +141,3 @@ if __name__ == "__main__":
     else:
         for engine in search_engines.values():
             test_search_engine(engine, ir_collection, n=args.number_results, verbose=args.verbose)
-

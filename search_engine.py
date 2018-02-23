@@ -55,10 +55,10 @@ class SearchEngine:
 class EmbeddingSearchEngine(SearchEngine):
     def __init__(self, dictionary, df_file=None, df_options={}):
         super().__init__(df_file, df_options)
-
         self.dictionary = dictionary
         self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')
         self.documents = []
+        self.default_df = 1
 
     def index_documents(self, documents):
         doc_tokens = []
