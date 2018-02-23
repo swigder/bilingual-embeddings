@@ -185,14 +185,14 @@ def print_description(items, description):
 
 
 def print_query_oov_rate(ir_collection):
-    from nltk import word_tokenize
+    from text_tools import tokenize, normalize
     document_tokens = set()
     for document in ir_collection.documents.values():
-        document_tokens.update(word_tokenize(document))
+        document_tokens.update(tokenize(normalize(document)))
     in_vocabulary = 0
     out_of_vocabulary = 0
     for query in ir_collection.queries.values():
-        for token in word_tokenize(query):
+        for token in tokenize(normalize(query)):
             if token in document_tokens:
                 in_vocabulary += 1
             else:
