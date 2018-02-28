@@ -21,7 +21,7 @@ class CosineSimilaritySearchEngine(SearchEngine):
             doc_tokens.append(tokenize(normalize(document)))
         self._init_word_weights_stopwords(doc_tokens, **self.word_weight_options)
         self.doc_tokens = [[token for token in document if token not in self.stopwords] for document in doc_tokens]
-        self.doc_vectors = [self._vectorize(tokens) for tokens in self.doc_tokens]
+        self.doc_vectors = [self._vectorize(tokens, weighted=True) for tokens in self.doc_tokens]
         self.doc_norms = [self._norm(tokens) for tokens in doc_tokens]
 
         for i, document in enumerate(self.doc_tokens):
@@ -34,6 +34,8 @@ class CosineSimilaritySearchEngine(SearchEngine):
     def query_index(self, query, n_results=5):
         query_tokens = [word for word in tokenize(normalize(query)) if word in self.index]
         query_norm = self._norm(query_tokens)
+        query_vector = self._vectorize(query_tokens)
+        query_weights = {token: count * self.word_weights[token] for token, count in query_vector.items()}
         processed = set()
         top_hits = [(0, None)] * n_results  # using simple array with assumption that n_results is small
         for token in set(query_tokens):
@@ -42,9 +44,10 @@ class CosineSimilaritySearchEngine(SearchEngine):
                     continue
                 processed.add(document_id)
                 document_tokens, document_norm = self.doc_tokens[document_id], self.doc_norms[document_id]
-                query_vector = self._vectorize(query_tokens)
                 document_vector = self.doc_vectors[document_id]
-                similarity = self._similarity_unnorm(query_vector, document_vector)
+                similarity = self._similarity_unnorm(unweighted_vector=query_vector,
+                                                     weighted_vector=document_vector,
+                                                     weights=query_weights)
                 similarity /= (query_norm * document_norm)
                 if similarity > top_hits[0][0]:
                     del top_hits[0]
@@ -60,17 +63,21 @@ class CosineSimilaritySearchEngine(SearchEngine):
         cleaned_tokens = list(set([token for token in tokens if token in self.word_weights]))
         return {token: i for (i, token) in enumerate(cleaned_tokens)}
 
-    def _vectorize(self, tokens):
+    def _vectorize(self, tokens, weighted=False):
         vector = defaultdict(int)
         for token in tokens:
             vector[token] += 1
-        return vector
+        if weighted:
+            for token in vector.keys():
+                vector[token] *= self.word_weights[token]
+        return dict(vector)
 
-    def _similarity_unnorm(self, vector1, vector2):
-        dimensions = set(vector1.keys()).union(vector2)
+    def _similarity_unnorm(self, unweighted_vector, weighted_vector, weights):
         vector_sum = 0
-        for dim in dimensions:  # this is faster than list comprehension
-            vector_sum += vector1[dim] * vector2[dim] * self.word_weights[dim]
+        for dim in weighted_vector.keys():  # this is faster than list comprehension
+            vector_sum += weighted_vector[dim] * unweighted_vector.get(dim, 0)
+        for dim in set(unweighted_vector.keys()).difference(weighted_vector.keys()):
+            vector_sum += weights[dim]
         return vector_sum
 
     @staticmethod
