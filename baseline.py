@@ -72,7 +72,8 @@ class CosineSimilaritySearchEngine(SearchEngine):
                 vector[token] *= self.word_weights[token]
         return dict(vector)
 
-    def _similarity_unnorm(self, unweighted_vector, weighted_vector, weights):
+    @staticmethod
+    def _similarity_unnorm(unweighted_vector, weighted_vector, weights):
         vector_sum = 0
         for dim in weighted_vector.keys():  # this is faster than list comprehension
             vector_sum += weighted_vector[dim] * unweighted_vector.get(dim, 0)
