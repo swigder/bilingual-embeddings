@@ -146,4 +146,3 @@ if __name__ == "__main__":
     else:
         for engine in search_engines.values():
             test_search_engine(engine, ir_collection, n=args.number_results, verbose=args.verbose)
-

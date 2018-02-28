@@ -47,7 +47,6 @@ class SearchEngine:
 
         df_cutoff = int(df_cutoff * num_docs)
         self.stopwords = set([token for token, df in dfs.items() if df >= df_cutoff])
-
         self.word_weights = {token: df_to_weight(df, num_docs) for token, df in dfs.items()}
         self.default_word_weight = default_df_fn(list(self.word_weights.values()))
 
@@ -55,7 +54,7 @@ class SearchEngine:
 class EmbeddingSearchEngine(SearchEngine):
     def __init__(self, dictionary, df_file=None, df_options={}):
         super().__init__(df_file, df_options)
-
+        
         self.dictionary = dictionary
         self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')
         self.documents = []
