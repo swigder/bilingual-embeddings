@@ -35,7 +35,6 @@ class CosineSimilaritySearchEngine(SearchEngine):
         query_tokens = [word for word in tokenize(normalize(query)) if word in self.index]
         query_norm = self._norm(query_tokens)
         query_vector = self._vectorize(query_tokens)
-        query_weights = {token: count * self.word_weights[token] for token, count in query_vector.items()}
         processed = set()
         top_hits = [(0, None)] * n_results  # using simple array with assumption that n_results is small
         for token in set(query_tokens):
@@ -45,9 +44,7 @@ class CosineSimilaritySearchEngine(SearchEngine):
                 processed.add(document_id)
                 document_tokens, document_norm = self.doc_tokens[document_id], self.doc_norms[document_id]
                 document_vector = self.doc_vectors[document_id]
-                similarity = self._similarity_unnorm(unweighted_vector=query_vector,
-                                                     weighted_vector=document_vector,
-                                                     weights=query_weights)
+                similarity = self._similarity_unnorm(unweighted_vector=query_vector, weighted_vector=document_vector)
                 similarity /= (query_norm * document_norm)
                 if similarity > top_hits[0][0]:
                     del top_hits[0]
@@ -73,12 +70,11 @@ class CosineSimilaritySearchEngine(SearchEngine):
         return dict(vector)
 
     @staticmethod
-    def _similarity_unnorm(unweighted_vector, weighted_vector, weights):
+    def _similarity_unnorm(unweighted_vector, weighted_vector):
         vector_sum = 0
-        for dim in weighted_vector.keys():  # this is faster than list comprehension
-            vector_sum += weighted_vector[dim] * unweighted_vector.get(dim, 0)
-        for dim in set(unweighted_vector.keys()).difference(weighted_vector.keys()):
-            vector_sum += weights[dim]
+        nonzero_dimensions = set(weighted_vector.keys()).intersection(unweighted_vector.keys())
+        for dim in nonzero_dimensions:
+            vector_sum += weighted_vector[dim] * unweighted_vector[dim]
         return vector_sum
 
     @staticmethod
