@@ -59,6 +59,7 @@ class EmbeddingSearchEngine(SearchEngine):
         self.dictionary = dictionary
         self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')
         self.documents = []
+        self.weighted_word_vector_cache = {}
 
     def index_documents(self, documents):
         doc_tokens = []
@@ -85,8 +86,15 @@ class EmbeddingSearchEngine(SearchEngine):
         for token in tokens:
             if token in self.stopwords:
                 continue
-            vector += self.dictionary.word_vector(token=token) * self.word_weights.get(token, self.default_word_weight)
+            vector += self._weighted_word_vector(token)
         return vector
+
+    def _weighted_word_vector(self, word):
+        if word in self.weighted_word_vector_cache:
+            return self.weighted_word_vector_cache[word]
+        weighted_word = self.dictionary.word_vector(token=word) * self.word_weights.get(word, self.default_word_weight)
+        self.weighted_word_vector_cache[word] = weighted_word
+        return weighted_word
 
 
 class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
