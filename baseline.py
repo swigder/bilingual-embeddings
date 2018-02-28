@@ -11,6 +11,7 @@ class CosineSimilaritySearchEngine(SearchEngine):
         self.index = {}
         self.documents = []
         self.doc_tokens = []
+        self.doc_vectors = []
         self.doc_norms = []
 
     def index_documents(self, documents):
@@ -20,6 +21,7 @@ class CosineSimilaritySearchEngine(SearchEngine):
             doc_tokens.append(tokenize(normalize(document)))
         self._init_word_weights_stopwords(doc_tokens, **self.word_weight_options)
         self.doc_tokens = [[token for token in document if token not in self.stopwords] for document in doc_tokens]
+        self.doc_vectors = [self._vectorize(tokens) for tokens in self.doc_tokens]
         self.doc_norms = [self._norm(tokens) for tokens in doc_tokens]
 
         for i, document in enumerate(self.doc_tokens):
@@ -40,10 +42,9 @@ class CosineSimilaritySearchEngine(SearchEngine):
                     continue
                 processed.add(document_id)
                 document_tokens, document_norm = self.doc_tokens[document_id], self.doc_norms[document_id]
-                dimensions = self._dimensions(query_tokens + document_tokens)
-                query_vector = self._vectorize(query_tokens, dimensions)
-                document_vector = self._vectorize(document_tokens, dimensions)
-                similarity = sum([query_vector[i] * document_vector[i] * self.word_weights[dim] for dim, i in dimensions.items()])
+                query_vector = self._vectorize(query_tokens)
+                document_vector = self.doc_vectors[document_id]
+                similarity = self._similarity_unnorm(query_vector, document_vector)
                 similarity /= (query_norm * document_norm)
                 if similarity > top_hits[0][0]:
                     del top_hits[0]
@@ -59,14 +60,18 @@ class CosineSimilaritySearchEngine(SearchEngine):
         cleaned_tokens = list(set([token for token in tokens if token in self.word_weights]))
         return {token: i for (i, token) in enumerate(cleaned_tokens)}
 
-    def _vectorize(self, tokens, dimensions):
-        vector = [0] * len(dimensions)
+    def _vectorize(self, tokens):
+        vector = defaultdict(int)
         for token in tokens:
-            if token in dimensions:
-                vector[dimensions[token]] += 1
-        for dimension, value in enumerate(vector):
-            vector[dimension] = self.tf_function(value)
+            vector[token] += 1
         return vector
+
+    def _similarity_unnorm(self, vector1, vector2):
+        dimensions = set(vector1.keys()).union(vector2)
+        vector_sum = 0
+        for dim in dimensions:  # this is faster than list comprehension
+            vector_sum += vector1[dim] * vector2[dim] * self.word_weights[dim]
+        return vector_sum
 
     @staticmethod
     def _norm(tokens):

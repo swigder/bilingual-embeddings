@@ -13,7 +13,7 @@ from text_tools import normalize, tokenize
 
 class SearchEngine:
     def __init__(self,
-                 tf_function=lambda tf: (1 + log(tf, 10) if tf is not 0 else 0),
+                 tf_function=lambda tf: (1 + log(tf, 10) if tf != 0 else 0),
                  df_options={}):
         self.tf_function = tf_function
         self.word_weight_options = df_options
