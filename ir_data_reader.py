@@ -102,8 +102,8 @@ class TimeReader(IrDataReader):
         return int(line.split()[1].strip())
 
     def extract_relevance(self, line):
-        doc_id, *judgements = map(int, line.split())
-        return doc_id, judgements
+        query_id, *doc_ids = map(int, line.split())
+        return query_id, doc_ids
 
     def skip_line(self, line):
         return line.startswith('*STOP')
@@ -127,14 +127,53 @@ class AdiReader(IrDataReader):
         return self.extract_id(line)
 
     def extract_relevance(self, line):
-        doc_id, judgements = map(int, line.split()[0:2])
-        return doc_id, [judgements]
+        query_id, doc_id = map(int, line.split()[0:2])
+        return query_id, [doc_id]
 
     def skip_line(self, line):
         return line.startswith('.') and not line.startswith('.I')
 
 
-readers = {'time': TimeReader, 'adi': AdiReader}
+class OhsuReader(IrDataReader):
+    def __init__(self, data_dir):
+        f = dir_appender(os.path.join(data_dir, 'trec9-train'))
+        super().__init__(doc_file=f('ohsumed.87'),
+                         query_file=f('query.ohsu.1-63'),
+                         relevance_file=f('qrels.ohsu.batch.87'))
+        self.previous_line_marker = None
+
+    def extract_doc_id(self, line):
+        if self.previous_line_marker == '.U':
+            self.previous_line_marker = None
+            return int(line)
+        return None
+
+    def extract_query_id(self, line):
+        if line.startswith('<num>'):
+            return line.split(':')[1].strip()
+
+    def extract_relevance(self, line):
+        query_id, doc_id = line.split()[0:2]
+        return query_id, [int(doc_id)]
+
+    def extract_line(self, line):
+        if line.startswith('<title>'):
+            return line[8:]
+        return line
+
+    def skip_line(self, line):
+        if line.startswith('.'):
+            self.previous_line_marker = line
+            return True
+        if line.startswith('<desc>') or line.startswith('<top>') or line.startswith('</top>'):
+            return True
+        if self.previous_line_marker in ['.S', '.M', '.P', '.A']:  # skip all fields except uid, title, abstract
+            self.previous_line_marker = None
+            return True
+        return False
+
+
+readers = {'time': TimeReader, 'adi': AdiReader, 'ohsu-trec': OhsuReader}
 
 
 def print_description(items, description):
@@ -146,14 +185,14 @@ def print_description(items, description):
 
 
 def print_query_oov_rate(ir_collection):
-    from nltk import word_tokenize
+    from text_tools import tokenize, normalize
     document_tokens = set()
     for document in ir_collection.documents.values():
-        document_tokens.update(word_tokenize(document))
+        document_tokens.update(tokenize(normalize(document)))
     in_vocabulary = 0
     out_of_vocabulary = 0
     for query in ir_collection.queries.values():
-        for token in word_tokenize(query):
+        for token in tokenize(normalize(query)):
             if token in document_tokens:
                 in_vocabulary += 1
             else:
