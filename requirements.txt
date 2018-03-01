@@ -1,3 +1,4 @@
 annoy
 gensim
 numpy
+pandas
