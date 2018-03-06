@@ -6,14 +6,12 @@ from math import log
 import numpy as np
 from annoy import AnnoyIndex
 
-from dictionary import BilingualDictionary, MonolingualDictionary
-from document_frequencies import read_dfs
-from text_tools import normalize, tokenize
+from utils import BilingualDictionary, MonolingualDictionary, read_dfs, normalize, tokenize
 
 
 class SearchEngine:
     def __init__(self,
-                 tf_function=lambda tf: (1 + log(tf, 10) if tf != 0 else 0),
+                 tf_function=lambda tf: (1 + log(tf, 10) if tf is not 0 else 0),
                  df_options={}):
         self.tf_function = tf_function
         self.word_weight_options = df_options
@@ -47,6 +45,7 @@ class SearchEngine:
 
         df_cutoff = int(df_cutoff * num_docs)
         self.stopwords = set([token for token, df in dfs.items() if df >= df_cutoff])
+
         self.word_weights = {token: df_to_weight(df, num_docs) for token, df in dfs.items()}
         self.default_word_weight = default_df_fn(list(self.word_weights.values()))
 
@@ -54,11 +53,10 @@ class SearchEngine:
 class EmbeddingSearchEngine(SearchEngine):
     def __init__(self, dictionary, df_file=None, df_options={}):
         super().__init__(df_file, df_options)
-        
+
         self.dictionary = dictionary
         self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')
         self.documents = []
-        self.weighted_word_vector_cache = {}
 
     def index_documents(self, documents):
         doc_tokens = []
@@ -85,15 +83,8 @@ class EmbeddingSearchEngine(SearchEngine):
         for token in tokens:
             if token in self.stopwords:
                 continue
-            vector += self._weighted_word_vector(token)
+            vector += self.dictionary.word_vector(token=token) * self.word_weights.get(token, self.default_word_weight)
         return vector
-
-    def _weighted_word_vector(self, word):
-        if word in self.weighted_word_vector_cache:
-            return self.weighted_word_vector_cache[word]
-        weighted_word = self.dictionary.word_vector(token=word) * self.word_weights.get(word, self.default_word_weight)
-        self.weighted_word_vector_cache[word] = weighted_word
-        return weighted_word
 
 
 class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):

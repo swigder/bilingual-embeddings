@@ -2,10 +2,9 @@ import argparse
 import os
 from collections import namedtuple
 
-from baseline import CosineSimilaritySearchEngine
-from dictionary import MonolingualDictionary
-from ir_data_reader import readers, sub_collection
-from search_engine import EmbeddingSearchEngine
+from search import CosineSimilaritySearchEngine, EmbeddingSearchEngine
+from utils import MonolingualDictionary
+from utils.ir_data_reader import readers, sub_collection
 
 
 PrecisionRecall = namedtuple('PrecisionRecall', ['precision', 'recall'])
@@ -146,3 +145,4 @@ if __name__ == "__main__":
     else:
         for engine in search_engines.values():
             test_search_engine(engine, ir_collection, n=args.number_results, verbose=args.verbose)
+
