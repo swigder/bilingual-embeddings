@@ -7,9 +7,8 @@ from math import log
 import numpy as np
 import pandas as pd
 
-from search.baseline import CosineSimilaritySearchEngine
-from search.search_engine import EmbeddingSearchEngine
-from utils.dictionary import MonolingualDictionary
+from search import CosineSimilaritySearchEngine, EmbeddingSearchEngine
+from utils import MonolingualDictionary
 from utils.ir_data_reader import readers
 from test.run_tests import f1_score, test_search_engine
 

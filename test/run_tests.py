@@ -2,9 +2,8 @@ import argparse
 import os
 from collections import namedtuple
 
-from search.baseline import CosineSimilaritySearchEngine
-from search.search_engine import EmbeddingSearchEngine
-from utils.dictionary import MonolingualDictionary
+from search import CosineSimilaritySearchEngine, EmbeddingSearchEngine
+from utils import MonolingualDictionary
 from utils.ir_data_reader import readers, sub_collection
 
 
