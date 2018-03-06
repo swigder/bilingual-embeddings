@@ -3,9 +3,9 @@ import os
 from collections import namedtuple
 
 from search.baseline import CosineSimilaritySearchEngine
-from search.dictionary import MonolingualDictionary
+from search.search_engine import EmbeddingSearchEngine
+from utils.dictionary import MonolingualDictionary
 from utils.ir_data_reader import readers, sub_collection
-from search import EmbeddingSearchEngine
 
 
 PrecisionRecall = namedtuple('PrecisionRecall', ['precision', 'recall'])

@@ -1,7 +1,7 @@
 from collections import defaultdict
 from math import sqrt
 
-from search import SearchEngine
+from search.search_engine import SearchEngine
 from utils.text_tools import tokenize, normalize
 
 

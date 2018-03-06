@@ -6,7 +6,7 @@ from math import log
 import numpy as np
 from annoy import AnnoyIndex
 
-from search.dictionary import BilingualDictionary, MonolingualDictionary
+from utils.dictionary import BilingualDictionary, MonolingualDictionary
 from utils.document_frequencies import read_dfs
 from utils.text_tools import normalize, tokenize
 
