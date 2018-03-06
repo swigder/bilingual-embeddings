@@ -1,16 +1,19 @@
 import argparse
+import operator
 
 import os
+
+import itertools
 
 from math import log
 
 import numpy as np
-import pandas as pd
 
-from search import CosineSimilaritySearchEngine, EmbeddingSearchEngine
-from utils import MonolingualDictionary
-from utils.ir_data_reader import readers
-from test.run_tests import f1_score, test_search_engine
+from baseline import CosineSimilaritySearchEngine
+from dictionary import MonolingualDictionary
+from ir_data_reader import readers
+from run_tests import f1_score, test_search_engine
+from search_engine import EmbeddingSearchEngine
 
 
 def compare_df_options(baseline=True):
@@ -19,40 +22,36 @@ def compare_df_options(baseline=True):
         'log': lambda tf: (1 + log(tf, 10)) if tf is not 0 else 0
     }
     df_cutoffs = [0.2, 0.4, 0.6, 0.8, 1.0]
-    df_files = {'none': None, 'wiki': '/Users/xx/thesis/wiki-df/wiki-df-fasttext.txt'}
+    df_files = [None, '/Users/xx/thesis/wiki-df/wiki-df-fasttext.txt']
     default_df_fns = {
         'zero': lambda dfs: 0,
         'min': lambda dfs: np.min(dfs),
         'avg': lambda dfs: np.average(dfs),
     } if not baseline else {'zero': lambda dfs: 0}
     df2weights = {
-        'none': lambda df, num_docs: 1,
         'plain': lambda df, num_docs: 1/df,
         'log': lambda df, num_docs: log(num_docs / df, 10),
     }
-
-    df_option_options = [df_files.keys(), tf_fns.keys(), default_df_fns.keys(), df2weights.keys(), df_cutoffs]
-    index = pd.MultiIndex.from_product(df_option_options, names=['df_file', 'tf', 'def_df', 'df', 'stopwords'])
-    results = pd.DataFrame(index=index, columns=['precision', 'recall', 'f-score'])
-
-    for key in index:
-        df_file, tf, def_df, df, stopwords = key
-        print('\n' + str(list(zip(index.names, key))))
-        df_config = {'df_cutoff': stopwords,
-                     'default_df_fn': default_df_fns[def_df],
-                     'df_file': df_files[df_file],
-                     'df_to_weight': df2weights[df]}
-        tf_idf_options = {'tf_function': tf_fns[tf], 'df_options': df_config}
+    df_option_options = [tf_fns.items(), df_cutoffs, df_files, default_df_fns.items(), df2weights.items()]
+    results = {}
+    for tf_fn, df_cutoff, df_file, default_df_fn, df2weight in itertools.product(*df_option_options):
+        key = 'tf {} - df_file {} - stop {} - defdf {} - df2w {}'.format(
+            tf_fn[0], df_file, df_cutoff, default_df_fn[0], df2weight[0])
+        print('\n' + key)
+        df_config = {'df_cutoff': df_cutoff,
+                     'default_df_fn': default_df_fn[1],
+                     'df_file': df_file,
+                     'df_to_weight': df2weight[1]}
         if baseline:
-            search_engine = CosineSimilaritySearchEngine(tf_idf_options=tf_idf_options)
+            search_engine = CosineSimilaritySearchEngine(tf_idf_options={'tf_function': tf_fn[1], 'df_options': df_config})
         else:
-            search_engine = EmbeddingSearchEngine(dictionary=mono_dict, tf_idf_options=tf_idf_options)
+            search_engine = EmbeddingSearchEngine(dictionary=mono_dict, df_file=df_file, df_options=df_config)
         search_engine.index_documents(ir_collection.documents.values())
         precision, recall = test_search_engine(search_engine, ir_collection, verbose=False)
-        results.loc[key] = {'precision': precision, 'recall': recall}
-    results['f-score'] = results.apply(lambda row: f1_score(row['precision'], row['recall']), axis=1)
+        results[key] = f1_score(precision, recall)
     print('\n\nResults:\n')
-    print(results.sort_values('f-score', ascending=False).to_string())
+    for k, v in sorted(results.items(), key=operator.itemgetter(1), reverse=True):
+        print('{} {:.4f}'.format(k, v))
 
 
 if __name__ == '__main__':

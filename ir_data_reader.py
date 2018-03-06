@@ -108,9 +108,6 @@ class TimeReader(IrDataReader):
     def skip_line(self, line):
         return line.startswith('*STOP')
 
-    def skip_line(self, line):
-        return line.startswith('*STOP')
-
 
 class AdiReader(IrDataReader):
     def __init__(self, data_dir):
@@ -188,7 +185,7 @@ def print_description(items, description):
 
 
 def print_query_oov_rate(ir_collection):
-    from utils.text_tools import tokenize, normalize
+    from text_tools import tokenize, normalize
     document_tokens = set()
     for document in ir_collection.documents.values():
         document_tokens.update(tokenize(normalize(document)))
