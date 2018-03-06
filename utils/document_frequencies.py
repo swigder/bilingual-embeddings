@@ -5,7 +5,7 @@ import time
 
 from collections import defaultdict
 
-from text_tools import normalize, tokenize
+from utils.text_tools import normalize, tokenize
 
 
 start = time.time()

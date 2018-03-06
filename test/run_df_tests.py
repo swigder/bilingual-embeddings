@@ -1,20 +1,17 @@
 import argparse
-import operator
 
 import os
-
-import itertools
 
 from math import log
 
 import numpy as np
 import pandas as pd
 
-from baseline import CosineSimilaritySearchEngine
-from dictionary import MonolingualDictionary
-from ir_data_reader import readers
-from run_tests import f1_score, test_search_engine
-from search_engine import EmbeddingSearchEngine
+from search.baseline import CosineSimilaritySearchEngine
+from search.dictionary import MonolingualDictionary
+from utils.ir_data_reader import readers
+from test.run_tests import f1_score, test_search_engine
+from search import EmbeddingSearchEngine
 
 
 def compare_df_options(baseline=True):

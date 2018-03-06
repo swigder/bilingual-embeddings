@@ -6,9 +6,9 @@ from math import log
 import numpy as np
 from annoy import AnnoyIndex
 
-from dictionary import BilingualDictionary, MonolingualDictionary
-from document_frequencies import read_dfs
-from text_tools import normalize, tokenize
+from search.dictionary import BilingualDictionary, MonolingualDictionary
+from utils.document_frequencies import read_dfs
+from utils.text_tools import normalize, tokenize
 
 
 class SearchEngine:

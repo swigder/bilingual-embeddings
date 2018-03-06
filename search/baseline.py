@@ -1,8 +1,8 @@
 from collections import defaultdict
 from math import sqrt
 
-from search_engine import SearchEngine
-from text_tools import tokenize, normalize
+from search import SearchEngine
+from utils.text_tools import tokenize, normalize
 
 
 class CosineSimilaritySearchEngine(SearchEngine):

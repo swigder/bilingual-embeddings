@@ -188,7 +188,7 @@ def print_description(items, description):
 
 
 def print_query_oov_rate(ir_collection):
-    from text_tools import tokenize, normalize
+    from utils.text_tools import tokenize, normalize
     document_tokens = set()
     for document in ir_collection.documents.values():
         document_tokens.update(tokenize(normalize(document)))
