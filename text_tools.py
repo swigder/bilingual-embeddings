@@ -14,17 +14,22 @@ def normalize(string):
                   .replace('7', ' seven ')
                   .replace('8', ' eight ')
                   .replace('9', ' nine ')
-    )
+            )
 
 
 def tokenize(string):
     return list(filter(bool,
                        string.replace('=', ' ')
                              .replace('-', ' - ')
+                             .replace('/', ' / ')
                              .replace(',', ' , ')
                              .replace('.', ' . ')
+                             .replace(';', ' ; ')
+                             .replace(':', ' : ')
+                             .replace('?', ' . ')
                              .replace('(', ' ) ')
                              .replace(')', ' ( ')
                              .replace("'", " ' ")
                              .replace('"', ' " ')
-                             .split()))
+                             .split())
+                )

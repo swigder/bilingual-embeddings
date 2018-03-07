@@ -1,16 +1,22 @@
 import argparse
 import os
 
+import pandas as pd
+
 from collections import namedtuple
 
+from dictionary import MonolingualDictionary
+from text_tools import tokenize, normalize
 
-IrCollection = namedtuple('IrCollection', ['documents', 'queries', 'relevance'])
+
+IrCollection = namedtuple('IrCollection', ['name', 'documents', 'queries', 'relevance'])
 
 
 def sub_collection(ir_collection, query):
-    return IrCollection(ir_collection.documents,
-                        {query: ir_collection.queries[query]},
-                        {query: ir_collection.relevance[query]})
+    return IrCollection(name=ir_collection.name,
+                        documents=ir_collection.documents,
+                        queries={query: ir_collection.queries[query]},
+                        relevance={query: ir_collection.relevance[query]})
 
 
 def dir_appender(dir_location):
@@ -18,7 +24,8 @@ def dir_appender(dir_location):
 
 
 class IrDataReader:
-    def __init__(self, doc_file, query_file, relevance_file):
+    def __init__(self, name, doc_file, query_file, relevance_file):
+        self.name = name
         self.doc_file = doc_file
         self.query_file = query_file
         self.relevance_file = relevance_file
@@ -46,7 +53,8 @@ class IrDataReader:
         return items
 
     def read_documents_queries_relevance(self):
-        return IrCollection(documents=self.read_documents(),
+        return IrCollection(name=self.name,
+                            documents=self.read_documents(),
                             queries=self.read_queries(),
                             relevance=self.read_relevance_judgments())
 
@@ -87,7 +95,7 @@ class IrDataReader:
 class TimeReader(IrDataReader):
     def __init__(self, data_dir):
         f = dir_appender(data_dir)
-        super().__init__(doc_file=f('TIME.ALL'), query_file=f('TIME.QUE'), relevance_file=f('TIME.REL'))
+        super().__init__(name='time', doc_file=f('TIME.ALL'), query_file=f('TIME.QUE'), relevance_file=f('TIME.REL'))
         self.id = 0
 
     def extract_doc_id(self, line):
@@ -112,7 +120,7 @@ class TimeReader(IrDataReader):
 class AdiReader(IrDataReader):
     def __init__(self, data_dir):
         f = dir_appender(data_dir)
-        super().__init__(doc_file=f('ADI.ALL'), query_file=f('ADI.QRY'), relevance_file=f('ADI.REL'))
+        super().__init__(name='adi', doc_file=f('ADI.ALL'), query_file=f('ADI.QRY'), relevance_file=f('ADI.REL'))
 
     @staticmethod
     def extract_id(line):
@@ -137,7 +145,8 @@ class AdiReader(IrDataReader):
 class OhsuReader(IrDataReader):
     def __init__(self, data_dir):
         f = dir_appender(os.path.join(data_dir, 'trec9-train'))
-        super().__init__(doc_file=f('ohsumed.87'),
+        super().__init__(name='ohsu-trec',
+                         doc_file=f('ohsumed.87'),
                          query_file=f('query.ohsu.1-63'),
                          relevance_file=f('qrels.ohsu.batch.87'))
         self.previous_line_marker = None
@@ -184,38 +193,100 @@ def print_description(items, description):
     print(keys[1], ':', items[keys[1]][:300])
 
 
-def print_query_oov_rate(ir_collection):
-    from text_tools import tokenize, normalize
-    document_tokens = set()
-    for document in ir_collection.documents.values():
-        document_tokens.update(tokenize(normalize(document)))
-    in_vocabulary = 0
-    out_of_vocabulary = 0
-    for query in ir_collection.queries.values():
-        for token in tokenize(normalize(query)):
-            if token in document_tokens:
-                in_vocabulary += 1
-            else:
-                out_of_vocabulary += 1
-    print()
-    print('In vocabulary {}, Out of vocabulary {}, OOV rate {}'
-          .format(in_vocabulary,
-                  out_of_vocabulary,
-                  out_of_vocabulary / (in_vocabulary + out_of_vocabulary)))
+def read_collection(base_dir, collection_name):
+    reader = readers[collection_name](os.path.join(base_dir, collection_name))
+    return reader.read_documents_queries_relevance()
+
+
+def describe_collection(collection, parsed_args):
+    print('\nReading collection {}...'.format(collection.name))
+    for name, item in collection._asdict().items():
+        if name is 'name':
+            continue
+        print_description(item, name)
+
+
+def write_fasttext_training_file(collection, parsed_args):
+    out_path = os.path.join(parsed_args.out_dir, collection.name + '-fasttext-training.txt')
+
+    with open(out_path, 'w') as file:
+        for doc in collection.documents.values():
+            file.write(' '.join(filter(lambda s: len(s) > 1, tokenize(normalize(doc)))) + '\n')
+
+
+def print_oov_stats(collections, parsed_args):
+
+    def oov_rate(iv, oov):
+        return len(oov) / (len(iv) + len(oov))
+
+    def texts_to_tokens(texts):
+        tokens = []
+        for text in texts:
+            tokens += tokenize(normalize(text))
+        return tokens
+
+    def oov_details(tokens, vocabulary):
+        in_vocabulary = []
+        out_of_vocabulary = []
+        for token in tokens:
+            in_vocabulary.append(token) if token in vocabulary else out_of_vocabulary.append(token)
+        in_vocabulary_set, out_of_vocabulary_set = set(in_vocabulary), set(out_of_vocabulary)
+        return {'tokens': len(out_of_vocabulary), 'tokens-oov': oov_rate(in_vocabulary, out_of_vocabulary),
+                'unique': len(out_of_vocabulary_set), 'unique-oov': oov_rate(in_vocabulary_set, out_of_vocabulary_set),}
+                # 'examples': list(out_of_vocabulary_set)[:10]}
+
+    parsed_args.embed = parsed_args.embed or []
+    parsed_args.domain_embed = parsed_args.domain_embed or []
+
+    index = pd.MultiIndex.from_product([(c.name for c in collections),
+                                        ['documents'] + parsed_args.embed + parsed_args.domain_embed])
+    df = pd.DataFrame(index=index, columns=['tokens', 'tokens-oov', 'unique', 'unique-oov', 'examples'])
+
+    non_domain_embed = {e: MonolingualDictionary(e) for e in parsed_args.embed}
+
+    for collection in collections:
+        from text_tools import tokenize, normalize
+        document_tokens = texts_to_tokens(collection.documents.values())
+        query_tokens = texts_to_tokens(collection.queries.values())
+        df.loc[collection.name, 'documents'] = oov_details(query_tokens, set(document_tokens))
+        for name, dictionary in non_domain_embed.items():
+            df.loc[collection.name, name] = oov_details(tokens=query_tokens, vocabulary=dictionary)
+        for domain_embed in parsed_args.domain_embed:
+            dictionary = MonolingualDictionary(domain_embed.format(collection.name))
+            df.loc[collection.name, domain_embed] = oov_details(tokens=query_tokens, vocabulary=dictionary)
+    print(df)
 
 
 if __name__ == "__main__":
+    def split_calls(f):
+        return lambda cs, a: [f(c, a) for c in cs]
+
     parser = argparse.ArgumentParser(description='IR data reader.')
 
     parser.add_argument('dir', type=str, help='Directory with files')
-    parser.add_argument('-t', '--type', choices=readers.keys(), default='time')
+
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument('-t', '--types', nargs='+', choices=list(readers.keys()) + ['all'], default='all')
+
+    subparsers = parser.add_subparsers()
+
+    parser_describe = subparsers.add_parser('describe', parents=[parent_parser])
+    parser_describe.set_defaults(func=split_calls(describe_collection))
+
+    parser_fasttext = subparsers.add_parser('fasttext', parents=[parent_parser])
+    parser_fasttext.add_argument('out_dir', type=str, help='Output directory')
+    parser_fasttext.set_defaults(func=split_calls(write_fasttext_training_file))
+
+    parser_fasttext = subparsers.add_parser('oov', parents=[parent_parser])
+    parser_fasttext.add_argument('-d', '--domain_embed', type=str, nargs='*',
+                                 help='Embedding format for domain-specific embedding')
+    parser_fasttext.add_argument('-e', '--embed', type=str, nargs='*',
+                                 help='Embedding location for general purpose embedding')
+    parser_fasttext.set_defaults(func=print_oov_stats)
 
     args = parser.parse_args()
 
-    reader = readers[args.type](os.path.join(args.dir, args.type))
+    if args.types == 'all':
+        args.types = list(readers.keys())
 
-    ir_collection = reader.read_documents_queries_relevance()
-    for name, item in ir_collection._asdict().items():
-        print_description(item, name)
-
-    print_query_oov_rate(ir_collection)
+    args.func([read_collection(base_dir=args.dir, collection_name=name) for name in args.types], args)
