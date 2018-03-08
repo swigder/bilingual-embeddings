@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from baseline import CosineSimilaritySearchEngine
 from dictionary import MonolingualDictionary
-from ir_data_reader import readers, sub_collection
+from ir_data_reader import readers, sub_collection, read_collection
 from search_engine import EmbeddingSearchEngine
 
 
@@ -110,8 +110,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='IR data reader.')
 
     parser.add_argument('ir_dir', type=str, help='Directory with IR files', nargs='?')
-    parser.add_argument('embed', type=str, help='Embedding file', nargs='?')
-    parser.add_argument('-t', '--type', choices=readers.keys(), default='time')
+    parser.add_argument('-d', '--domain_embed', type=str, nargs='*',
+                        help='Embedding format for domain-specific embedding')
+    parser.add_argument('-e', '--embed', type=str, nargs='*',
+                        help='Embedding location for general purpose embedding')
+    parser.add_argument('-t', '--types', choices=list(readers.keys()) + ['all'], default='all')
     parser.add_argument('-n', '--number_results', type=int, default=5)
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-b', '--baseline', action='store_true')
@@ -120,14 +123,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    if args.types == 'all':
+        args.types = list(readers.keys())
+
     if not args.ir_dir:
         args.ir_dir = '/Users/xx/Documents/school/kth/thesis/ir-datasets/'
     if not args.embed:
         args.embed = '/Users/xx/thesis/bivecs-muse/wiki.multi.en.vec'
         # args.embed = '/Users/xx/Downloads/GoogleNews-vectors-negative300.bin.gz'
 
-    reader = readers[args.type](os.path.join(args.ir_dir, args.type))
-    ir_collection = reader.read_documents_queries_relevance()
+    ir_collection = read_collection(base_dir=args.dir, collection_name=name)
 
     search_engines = {}
 

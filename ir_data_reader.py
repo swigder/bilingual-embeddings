@@ -1,11 +1,8 @@
 import argparse
 import os
 
-import pandas as pd
-
 from collections import namedtuple
 
-from dictionary import MonolingualDictionary
 from text_tools import tokenize, normalize
 
 
@@ -214,49 +211,6 @@ def write_fasttext_training_file(collection, parsed_args):
             file.write(' '.join(filter(lambda s: len(s) > 1, tokenize(normalize(doc)))) + '\n')
 
 
-def print_oov_stats(collections, parsed_args):
-
-    def oov_rate(iv, oov):
-        return len(oov) / (len(iv) + len(oov))
-
-    def texts_to_tokens(texts):
-        tokens = []
-        for text in texts:
-            tokens += tokenize(normalize(text))
-        return tokens
-
-    def oov_details(tokens, vocabulary):
-        in_vocabulary = []
-        out_of_vocabulary = []
-        for token in tokens:
-            in_vocabulary.append(token) if token in vocabulary else out_of_vocabulary.append(token)
-        in_vocabulary_set, out_of_vocabulary_set = set(in_vocabulary), set(out_of_vocabulary)
-        return {'tokens': len(out_of_vocabulary), 'tokens-oov': oov_rate(in_vocabulary, out_of_vocabulary),
-                'unique': len(out_of_vocabulary_set), 'unique-oov': oov_rate(in_vocabulary_set, out_of_vocabulary_set),}
-                # 'examples': list(out_of_vocabulary_set)[:10]}
-
-    parsed_args.embed = parsed_args.embed or []
-    parsed_args.domain_embed = parsed_args.domain_embed or []
-
-    index = pd.MultiIndex.from_product([(c.name for c in collections),
-                                        ['documents'] + parsed_args.embed + parsed_args.domain_embed])
-    df = pd.DataFrame(index=index, columns=['tokens', 'tokens-oov', 'unique', 'unique-oov', 'examples'])
-
-    non_domain_embed = {e: MonolingualDictionary(e) for e in parsed_args.embed}
-
-    for collection in collections:
-        from text_tools import tokenize, normalize
-        document_tokens = texts_to_tokens(collection.documents.values())
-        query_tokens = texts_to_tokens(collection.queries.values())
-        df.loc[collection.name, 'documents'] = oov_details(query_tokens, set(document_tokens))
-        for name, dictionary in non_domain_embed.items():
-            df.loc[collection.name, name] = oov_details(tokens=query_tokens, vocabulary=dictionary)
-        for domain_embed in parsed_args.domain_embed:
-            dictionary = MonolingualDictionary(domain_embed.format(collection.name))
-            df.loc[collection.name, domain_embed] = oov_details(tokens=query_tokens, vocabulary=dictionary)
-    print(df)
-
-
 if __name__ == "__main__":
     def split_calls(f):
         return lambda cs, a: [f(c, a) for c in cs]
@@ -276,13 +230,6 @@ if __name__ == "__main__":
     parser_fasttext = subparsers.add_parser('fasttext', parents=[parent_parser])
     parser_fasttext.add_argument('out_dir', type=str, help='Output directory')
     parser_fasttext.set_defaults(func=split_calls(write_fasttext_training_file))
-
-    parser_fasttext = subparsers.add_parser('oov', parents=[parent_parser])
-    parser_fasttext.add_argument('-d', '--domain_embed', type=str, nargs='*',
-                                 help='Embedding format for domain-specific embedding')
-    parser_fasttext.add_argument('-e', '--embed', type=str, nargs='*',
-                                 help='Embedding location for general purpose embedding')
-    parser_fasttext.set_defaults(func=print_oov_stats)
 
     args = parser.parse_args()
 
