@@ -12,7 +12,7 @@ import numpy as np
 from baseline import CosineSimilaritySearchEngine
 from dictionary import MonolingualDictionary
 from ir_data_reader import readers
-from run_tests import f1_score, test_search_engine
+from test.run_tests import f1_score, test_search_engine
 from search_engine import EmbeddingSearchEngine
 
 
