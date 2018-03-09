@@ -1,8 +1,9 @@
 import argparse
 
-from .domain_specific_tests import oov_test, search_test
+from .df_tests import vary_df, add_df_parser_options
+from .oov_tests import oov_test
+from .testing_framework import vary_embeddings, search_test
 from ir_data_reader import readers, read_collection
-from .testing_framework import vary_embeddings
 
 
 parser = argparse.ArgumentParser(description='IR data reader.')
@@ -18,11 +19,16 @@ parent_parser.add_argument('-d', '--domain_embed', type=str, nargs='*',
 parent_parser.add_argument('-e', '--embed', type=str, nargs='*',
                            help='Embedding location for general purpose embedding')
 
-parser_domain_specific_oov = subparsers.add_parser('oov', parents=[parent_parser])
-parser_domain_specific_oov.set_defaults(func=vary_embeddings(oov_test))
+oov_parser = subparsers.add_parser('oov', parents=[parent_parser])
+oov_parser.set_defaults(func=vary_embeddings(oov_test))
 
-parser_domain_specific_search = subparsers.add_parser('search', parents=[parent_parser])
-parser_domain_specific_search.set_defaults(func=vary_embeddings(search_test))
+embedding_search_parser = subparsers.add_parser('embed', parents=[parent_parser])
+embedding_search_parser.set_defaults(func=vary_embeddings(search_test))
+
+df_parser = subparsers.add_parser('df', parents=[parent_parser])
+add_df_parser_options(df_parser)
+df_parser.set_defaults(func=vary_df(search_test))
+
 
 args = parser.parse_args()
 
