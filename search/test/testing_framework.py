@@ -16,8 +16,9 @@ def vary_embeddings(test):
         non_domain_embed = base_name_map(parsed_args.embed)
         domain_embed = base_name_map(parsed_args.domain_embed)
 
+        baseline = test.non_embeddings and parsed_args.baseline
         index = pd.MultiIndex.from_product([(c.name for c in collections),
-                                            ([test.non_embeddings] if test.non_embeddings else []) +
+                                            ([test.non_embeddings] if baseline else []) +
                                             list(non_domain_embed.keys()) + list(domain_embed.keys())])
         df = pd.DataFrame(index=index, columns=test.columns)
 
@@ -29,7 +30,7 @@ def vary_embeddings(test):
                 df.loc[collection.name, embed_name] = test.f(collection, embed)
 
         for collection in collections:
-            if test.non_embeddings:
+            if baseline:
                 df.loc[collection.name, test.non_embeddings] = test.f(collection, None)
             for embed_name, path in domain_embed.items():
                 embed = MonolingualDictionary(path.format(collection.name))
