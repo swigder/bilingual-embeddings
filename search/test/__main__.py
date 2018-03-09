@@ -11,6 +11,7 @@ subparsers = parser.add_subparsers()
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument('ir_dir', type=str, help='Directory with IR files', nargs='?')
 parent_parser.add_argument('-t', '--types', choices=list(readers.keys()) + ['all'], nargs='*', default='all')
+parent_parser.add_argument('-b', '--baseline', action='store_true')
 
 parent_parser.add_argument('-d', '--domain_embed', type=str, nargs='*',
                            help='Embedding format for domain-specific embedding')
