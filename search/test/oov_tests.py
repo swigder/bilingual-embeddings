@@ -26,8 +26,10 @@ def oov_details(tokens, vocabulary):
     for token in tokens:
         in_vocabulary.append(token) if token in vocabulary else out_of_vocabulary.append(token)
     in_vocabulary_set, out_of_vocabulary_set = set(in_vocabulary), set(out_of_vocabulary)
-    return {'tokens': len(out_of_vocabulary), 'tokens-oov': oov_rate(in_vocabulary, out_of_vocabulary),
-            'unique': len(out_of_vocabulary_set), 'unique-oov': oov_rate(in_vocabulary_set, out_of_vocabulary_set), }
+    return {'tokens-count': len(out_of_vocabulary),
+            'tokens-rate': oov_rate(in_vocabulary, out_of_vocabulary),
+            'unique-count': len(out_of_vocabulary_set),
+            'unique-rate': oov_rate(in_vocabulary_set, out_of_vocabulary_set), }
     # 'examples': list(out_of_vocabulary_set)[:10]}
 
 
