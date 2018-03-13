@@ -1,8 +1,10 @@
 import argparse
 
+import pandas as pd
+
 from .df_tests import vary_df, add_df_parser_options
 from .oov_tests import oov_test
-from .testing_framework import vary_embeddings, search_test
+from .testing_framework import vary_embeddings, search_test, embed_to_engine
 from ir_data_reader import readers, read_collection
 
 
@@ -13,6 +15,9 @@ parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument('ir_dir', type=str, help='Directory with IR files', nargs='?')
 parent_parser.add_argument('-t', '--types', choices=list(readers.keys()) + ['all'], nargs='*', default='all')
 parent_parser.add_argument('-b', '--baseline', action='store_true')
+parent_parser.add_argument('-c', '--column', type=str, nargs='?')
+parent_parser.add_argument('-l', '--latex', action='store_true')
+parent_parser.add_argument('-p', '--precision', type=int, default=4)
 
 parent_parser.add_argument('-d', '--domain_embed', type=str, nargs='*',
                            help='Embedding format for domain-specific embedding')
@@ -23,7 +28,7 @@ oov_parser = subparsers.add_parser('oov', parents=[parent_parser])
 oov_parser.set_defaults(func=vary_embeddings(oov_test))
 
 embedding_search_parser = subparsers.add_parser('embed', parents=[parent_parser])
-embedding_search_parser.set_defaults(func=vary_embeddings(search_test))
+embedding_search_parser.set_defaults(func=vary_embeddings(embed_to_engine(search_test)))
 
 df_parser = subparsers.add_parser('df', parents=[parent_parser])
 add_df_parser_options(df_parser)
@@ -35,4 +40,11 @@ args = parser.parse_args()
 if args.types == 'all':
     args.types = list(readers.keys())
 
-args.func([read_collection(base_dir=args.ir_dir, collection_name=name) for name in args.types], args)
+result = args.func([read_collection(base_dir=args.ir_dir, collection_name=name) for name in args.types], args)
+
+pd.set_option('precision', args.precision)
+if args.latex:
+    print(result.to_latex())
+else:
+    print(result)
+

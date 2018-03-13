@@ -36,7 +36,7 @@ def oov_test_f(collection, embed):
 
     if embed is None:
         document_tokens = texts_to_tokens(collection.documents.values())
-        return oov_details(query_tokens, set(document_tokens))
+        return oov_details(tokens=query_tokens, vocabulary=set(document_tokens))
     else:
         return oov_details(tokens=query_tokens, vocabulary=embed)
 

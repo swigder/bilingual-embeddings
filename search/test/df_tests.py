@@ -77,6 +77,6 @@ def vary_df(test):
                 df.loc[collection.name, tf_fn, stopword_cutoff, df_file, default_df_fn, df2weight] = \
                     test.f(collection, search_engine)
 
-        print(df)
+        return df
 
     return inner
