@@ -4,7 +4,7 @@ from collections import namedtuple
 import pandas as pd
 
 from baseline import CosineSimilaritySearchEngine
-from dictionary import MonolingualDictionary
+from dictionary import MonolingualDictionary, SubwordDictionary
 from search_engine import EmbeddingSearchEngine
 from .run_tests import query_result, f1_score
 
@@ -29,6 +29,9 @@ def vary_embeddings(test):
     def inner(collections, parsed_args):
         def df_value(value):
             return value if not parsed_args.column else value[parsed_args.column]
+
+        def dictionary(embed_path):
+            return SubwordDictionary(embed_path) if parsed_args.subword else MonolingualDictionary(embed_path)
 
         # use base name as prettier format, None -> []
         non_domain_embed = base_name_map(parsed_args.embed)
@@ -57,7 +60,7 @@ def vary_embeddings(test):
         # embeddings are slow to load and take up a lot of memory. load them only once for all collections, and release
         # them quickly.
         for embed_name, path in non_domain_embed.items():
-            embed = MonolingualDictionary(path)
+            embed = dictionary(path)
             for collection in collections:
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
 
@@ -65,7 +68,7 @@ def vary_embeddings(test):
             if baseline:
                 df.loc[collection.name, test.non_embed] = df_value(test.f(collection, None))
             for embed_name, path in domain_embed.items():
-                embed = MonolingualDictionary(path.format(collection.name))
+                embed = dictionary(path.format(collection.name))
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
 
         return df
