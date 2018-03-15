@@ -3,6 +3,7 @@
 fasttext=/Users/xx/thesis/fastText/fasttext
 training_dir=/Users/xx/thesis/embed-train
 output_dir=/Users/xx/thesis/embed
+
 collection=''
 pretrained=''
 subword=3
