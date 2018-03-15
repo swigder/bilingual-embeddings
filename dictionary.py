@@ -59,10 +59,11 @@ class MonolingualDictionary(Dictionary):
 
 
 class BilingualDictionary(Dictionary):
-    def __init__(self, src_emb_file, tgt_emb_file):
+    def __init__(self, src_emb_file, tgt_emb_file, subword=False):
         assert os.path.exists(src_emb_file) and os.path.exists(tgt_emb_file)  # slow to open so don't want to waste time
-        self.src_emb = MonolingualDictionary(emb_file=src_emb_file)
-        self.tgt_emb = MonolingualDictionary(emb_file=tgt_emb_file)
+        cls = MonolingualDictionary if not subword else SubwordDictionary
+        self.src_emb = cls(emb_file=src_emb_file)
+        self.tgt_emb = cls(emb_file=tgt_emb_file)
         assert self.src_emb.vector_dimensionality == self.tgt_emb.vector_dimensionality
         self.vector_dimensionality = self.src_emb.vector_dimensionality
 
