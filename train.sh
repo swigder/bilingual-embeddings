@@ -54,4 +54,6 @@ if [ "${pretrained}" == "pubmed" ]; then
   dim=200
 fi
 
+echo "Training to ${output_file}"
+
 ${fasttext} skipgram -input ${training_file} -output ${output_file} -dim ${dim} -epoch ${epoch} -minCount ${min} -minn ${subword} -ws ${window}

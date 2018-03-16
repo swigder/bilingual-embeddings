@@ -1,3 +1,4 @@
+import glob
 import os
 from collections import namedtuple
 
@@ -41,10 +42,11 @@ def vary_embeddings(test):
         for path in non_domain_embed.values():
             if not os.path.exists(path):
                 raise FileNotFoundError(path)
-        for path in domain_embed.values():
-            for collection in collections:
-                if not os.path.exists(path.format(collection.name)):
-                    raise FileNotFoundError(path.format(collection.name))
+        if not parsed_args.hyperparams:
+            for path in domain_embed.values():
+                for collection in collections:
+                    if not os.path.exists(path.format(collection.name)):
+                        raise FileNotFoundError(path.format(collection.name))
 
         baseline = test.non_embed and parsed_args.baseline
         embed_names = [test.non_embed] if baseline else [] + list(non_domain_embed.keys()) + list(domain_embed.keys())
@@ -54,7 +56,7 @@ def vary_embeddings(test):
         else:
             assert parsed_args.column in test.columns
             index = [c.name for c in collections]
-            columns = embed_names
+            columns = embed_names if not parsed_args.hyperparams else []
         df = pd.DataFrame(index=index, columns=columns)
 
         # embeddings are slow to load and take up a lot of memory. load them only once for all collections, and release
@@ -68,9 +70,17 @@ def vary_embeddings(test):
             if baseline:
                 df.loc[collection.name, test.non_embed] = df_value(test.f(collection, None))
             for embed_name, path in domain_embed.items():
-                embed = dictionary(path.format(collection.name))
-                df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
-
+                if not parsed_args.hyperparams:
+                    embed = dictionary(path.format(collection.name))
+                    df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
+                else:
+                    globbed_path = path.format(collection.name)
+                    embeds = glob.glob(globbed_path)
+                    for embed_path in embeds:
+                        embed = dictionary(embed_path)
+                        star = globbed_path.index('*')
+                        column = embed_path[star:star-len(globbed_path)+1]
+                        df.loc[collection.name, column] = df_value(test.f(collection, embed))
         return df
 
     return inner
@@ -101,3 +111,15 @@ def search_test_f(collection, search_engine):
 
 search_test = EmbeddingsTest(f=search_test_f, columns=search_test_columns, non_embed='baseline')
 
+
+'''
+Print result
+'''
+
+
+def display_data(data, args):
+    pd.set_option('precision', args.precision)
+    if args.latex:
+        print(data.to_latex())
+    else:
+        print(data)
