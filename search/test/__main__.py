@@ -18,6 +18,7 @@ parent_parser.add_argument('-hp', '--hyperparams', action='store_true')
 parent_parser.add_argument('-c', '--column', type=str, nargs='?')
 parent_parser.add_argument('-l', '--latex', action='store_true')
 parent_parser.add_argument('-p', '--precision', type=int, default=4)
+parent_parser.add_argument('-q', '--query_id', type=str, nargs='*')
 
 parent_parser.add_argument('-d', '--domain_embed', type=str, nargs='*',
                            help='Embedding format for domain-specific embedding')

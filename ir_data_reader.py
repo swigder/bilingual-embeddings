@@ -1,10 +1,9 @@
 import argparse
 import os
 
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
-from text_tools import tokenize, normalize
-
+from text_tools import tokenize, normalize, detect_phrases, replace_phrases
 
 IrCollection = namedtuple('IrCollection', ['name', 'documents', 'queries', 'relevance'])
 
@@ -28,7 +27,7 @@ class IrDataReader:
         self.relevance_file = relevance_file
 
     def _read_file(self, file, extract_id_fn):
-        items = {}
+        items = OrderedDict()
         current_id = ''
         current_item = ''
 
@@ -62,7 +61,7 @@ class IrDataReader:
         return self._read_file(self.query_file, self.extract_query_id)
 
     def read_relevance_judgments(self):
-        items = {}
+        items = OrderedDict()
         with open(self.relevance_file) as f:
             for line in f:
                 if not line.strip():
@@ -87,6 +86,37 @@ class IrDataReader:
 
     def extract_relevance(self, line):
         pass
+
+
+class StandardReader(IrDataReader):
+    def __init__(self, name, data_dir):
+        f = lambda t: os.path.join(data_dir, '{}-{}.txt'.format(name, t))
+        super().__init__(name=name, doc_file=f('documents'), query_file=f('queries'), relevance_file=f('relevance'))
+        self.extract_doc_id = self.extract_id
+        self.extract_query_id = self.extract_id
+
+    def read_documents_queries_relevance(self):
+        return IrCollection(name=self.name,
+                            documents=self.read_documents(),
+                            queries=self.read_queries(),
+                            relevance=self.read_relevance_judgments())
+
+    @staticmethod
+    def safe_int(string):
+        try:
+            return int(string)
+        except ValueError:
+            return string
+
+    def extract_id(self, line):
+        return None if not line.startswith('.id') else self.safe_int(line.split()[-1])
+
+    def read_relevance_judgments(self):
+        unsplit = self._read_file(self.relevance_file, self.extract_id)
+        return {self.safe_int(rid): list(map(int, rels.split())) for rid, rels in unsplit.items()}
+
+    def skip_line(self, line):
+        return line.startswith('.count')
 
 
 class TimeReader(IrDataReader):
@@ -190,8 +220,11 @@ def print_description(items, description):
     print(keys[1], ':', items[keys[1]][:300])
 
 
-def read_collection(base_dir, collection_name):
-    reader = readers[collection_name](os.path.join(base_dir, collection_name))
+def read_collection(base_dir, collection_name, standard=True):
+    path = os.path.join(base_dir, collection_name)
+    reader = StandardReader(name=collection_name, data_dir=path) \
+        if standard \
+        else readers[collection_name](data_dir=path)
     return reader.read_documents_queries_relevance()
 
 
@@ -204,11 +237,45 @@ def describe_collection(collection, parsed_args):
 
 
 def write_fasttext_training_file(collection, parsed_args):
-    out_path = os.path.join(parsed_args.out_dir, collection.name + '-fasttext-training.txt')
+    def to_fasttext(line):
+        return ' '.join(filter(lambda s: len(s) > 1, tokenize(normalize(line))))
 
-    with open(out_path, 'w') as file:
-        for doc in collection.documents.values():
-            file.write(' '.join(filter(lambda s: len(s) > 1, tokenize(normalize(doc)))) + '\n')
+    def write_lines_to_path(path, out_lines):
+        with open(path, 'w') as out_file:
+            out_file.write('\n'.join(out_lines))
+
+    out_path = os.path.join(parsed_args.out_dir, collection.name + '.txt')
+
+    if not parsed_args.phrases:
+        with open(out_path, 'w') as file:
+            for doc in collection.documents.values():
+                file.write(to_fasttext(doc) + '\n')
+    else:
+        lines = [to_fasttext(doc) for doc in collection.documents.values()]
+        phrases = detect_phrases(lines)
+        write_lines_to_path('-phrases'.join(os.path.splitext(out_path)), phrases)
+        write_lines_to_path(out_path, replace_phrases(lines, phrases))
+
+
+def write_to_standard_form(collection, parsed_args):
+    def write_to_file(name, dictionary, transform=lambda i: i):
+        out_path = os.path.join(parsed_args.out_dir, collection.name, '{}-{}.txt'.format(collection.name, name))
+        with open(out_path, 'w') as out_file:
+            out_file.write('.count.{} {}\n\n'.format(name, len(dictionary)))
+            for item_id, item in dictionary.items():
+                out_file.write('.id.{} {}\n{}\n\n'.format(name[0], item_id, transform(item)))
+
+    os.makedirs(os.path.join(parsed_args.out_dir, collection.name), exist_ok=True)
+
+    if parsed_args.phrases:
+        phrases = detect_phrases([normalize(doc) for doc in collection.documents])
+        transform_f = lambda l: ' '.join(tokenize(replace_phrases([normalize(l)], phrases=phrases)))
+    else:
+        transform_f = lambda l: ' '.join(tokenize(normalize(l)))
+
+    write_to_file('documents', collection.documents, transform=transform_f)
+    write_to_file('queries', collection.queries, transform=transform_f)
+    write_to_file('relevance', collection.relevance, transform=lambda l: ' '.join(map(str, l)))
 
 
 if __name__ == "__main__":
@@ -225,15 +292,24 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers()
 
     parser_describe = subparsers.add_parser('describe', parents=[parent_parser])
+    parser_describe.add_argument('-s', '--standard', action='store_true')
     parser_describe.set_defaults(func=split_calls(describe_collection))
 
     parser_fasttext = subparsers.add_parser('fasttext', parents=[parent_parser])
     parser_fasttext.add_argument('out_dir', type=str, help='Output directory')
+    parser_fasttext.add_argument('-p', '--phrases', action='store_true', help='Detect and join phrases.')
+    parser_fasttext.add_argument('-s', '--standard', action='store_true')
     parser_fasttext.set_defaults(func=split_calls(write_fasttext_training_file))
+
+    parser_fasttext = subparsers.add_parser('standardize', parents=[parent_parser])
+    parser_fasttext.add_argument('-p', '--phrases', action='store_true', help='Detect and join phrases.')
+    parser_fasttext.add_argument('out_dir', type=str, help='Output directory')
+    parser_fasttext.set_defaults(func=split_calls(write_to_standard_form))
+    parser_fasttext.set_defaults(standard=False)
 
     args = parser.parse_args()
 
     if args.types == 'all':
         args.types = list(readers.keys())
 
-    args.func([read_collection(base_dir=args.dir, collection_name=name) for name in args.types], args)
+    args.func([read_collection(base_dir=args.dir, collection_name=name, standard=args.standard) for name in args.types], args)

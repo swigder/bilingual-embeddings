@@ -39,6 +39,10 @@ shift $((OPTIND-1))
 
 remaining="$@"
 
+if [ -z "${collection}" ]; then
+    echo "Collection (-c) is required!"
+    exit 1
+fi
 training_file=${training_dir}/${collection}.txt
 
 output_suffix="${collection}"
