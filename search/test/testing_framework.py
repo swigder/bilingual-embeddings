@@ -3,6 +3,7 @@ import os
 from collections import namedtuple
 
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from baseline import CosineSimilaritySearchEngine
 from dictionary import MonolingualDictionary, SubwordDictionary
@@ -81,6 +82,13 @@ def vary_embeddings(test):
                         star = globbed_path.index('*')
                         column = embed_path[star:star-len(globbed_path)+1]
                         df.loc[collection.name, column] = df_value(test.f(collection, embed))
+        if parsed_args.hyperparams:
+            cols = df.columns.tolist()
+            try:
+                cols = list(map(str, sorted(map(int, cols))))
+            except ValueError:
+                cols = sorted(cols)
+            df = df[cols]
         return df
 
     return inner
@@ -117,9 +125,18 @@ Print result
 '''
 
 
-def display_data(data, args):
+def print_table(data, args):
     pd.set_option('precision', args.precision)
     if args.latex:
         print(data.to_latex())
     else:
         print(data)
+
+
+def display_chart(data, args):
+    for row in data.index:
+        plt.plot(data.loc[row], label=row)
+    plt.legend()
+    plt.xlabel(args.x_axis)
+    plt.ylabel(args.column)
+    plt.show()

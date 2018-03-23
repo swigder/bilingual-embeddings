@@ -2,7 +2,7 @@ import argparse
 
 from .df_tests import vary_df, add_df_parser_options
 from .oov_tests import oov_test
-from .testing_framework import vary_embeddings, search_test, embed_to_engine, display_data
+from .testing_framework import vary_embeddings, search_test, embed_to_engine, print_table, display_chart
 from ir_data_reader import readers, read_collection
 
 
@@ -18,6 +18,7 @@ parent_parser.add_argument('-hp', '--hyperparams', action='store_true')
 parent_parser.add_argument('-c', '--column', type=str, nargs='?')
 parent_parser.add_argument('-l', '--latex', action='store_true')
 parent_parser.add_argument('-p', '--precision', type=int, default=4)
+parent_parser.add_argument('-x', '--x_axis', type=str, default='')
 parent_parser.add_argument('-q', '--query_id', type=str, nargs='*')
 
 parent_parser.add_argument('-d', '--domain_embed', type=str, nargs='*',
@@ -43,4 +44,5 @@ if args.types == 'all':
 
 result = args.func([read_collection(base_dir=args.ir_dir, collection_name=name) for name in args.types], args)
 
-display_data(result, args)
+print_table(result, args)
+# display_chart(result, args)
