@@ -101,7 +101,10 @@ class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
         super().__init__(dictionary=dictionary)
 
     def _vectorize(self, tokens, indexing=False):
-        return np.sum(self.dictionary.word_vectors(tokens=tokens, reverse=not indexing), axis=0)
+        if indexing:  # document language, use df
+            return EmbeddingSearchEngine._vectorize(self, tokens, indexing)
+        else:  # query language, df not available
+            return np.sum(self.dictionary.word_vectors(tokens=tokens, reverse=True), axis=0)
 
 
 if __name__ == "__main__":

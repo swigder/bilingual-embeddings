@@ -2,7 +2,7 @@ import argparse
 
 from .df_tests import vary_df, add_df_parser_options
 from .oov_tests import oov_test
-from .testing_framework import vary_embeddings, search_test, embed_to_engine, print_table, display_chart
+from .testing_framework import vary_embeddings, search_test, embed_to_engine, print_table, display_chart, bilingual
 from ir_data_reader import readers, read_collection
 
 
@@ -35,6 +35,12 @@ embedding_search_parser.set_defaults(func=vary_embeddings(embed_to_engine(search
 df_parser = subparsers.add_parser('df', parents=[parent_parser])
 add_df_parser_options(df_parser)
 df_parser.set_defaults(func=vary_df(search_test))
+
+bilingual_parser = subparsers.add_parser('bilingual', parents=[parent_parser])
+bilingual_parser.add_argument('-de', '--doc_embed', type=str, help='Document-language embedding location')
+bilingual_parser.add_argument('-qe', '--query_embed', type=str, help='Query-language embedding location')
+bilingual_parser.set_defaults(func=bilingual(search_test))
+
 
 
 args = parser.parse_args()

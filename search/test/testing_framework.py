@@ -6,8 +6,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from baseline import CosineSimilaritySearchEngine
-from dictionary import MonolingualDictionary, SubwordDictionary
-from search_engine import EmbeddingSearchEngine
+from dictionary import MonolingualDictionary, SubwordDictionary, BilingualDictionary
+from search_engine import EmbeddingSearchEngine, BilingualEmbeddingSearchEngine
 from .run_tests import query_result, f1_score
 
 
@@ -96,6 +96,39 @@ def vary_embeddings(test):
 
 def split_types(f):
     return lambda cs, a: (f(c, a) for c in cs)
+
+
+def bilingual(test):
+    def inner(collections, parsed_args):
+        if len(collections) != 1:
+            raise ValueError
+        collection = collections[0]
+        dictionary = BilingualDictionary(parsed_args.doc_embed, parsed_args.query_embed)
+        search_engine = BilingualEmbeddingSearchEngine(dictionary=dictionary)
+        search_engine.index_documents(collection.documents.values())
+        doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
+
+        total_precision_original, total_recall_original = 0, 0
+        total_precision_translated, total_recall_translated = 0, 0
+
+        for i, query in collection.queries_translated.items():
+            expected = collection.relevance[i]
+            print('\nOriginal:')
+            pr_original = query_result(search_engine, i, collection.queries[i], expected, doc_ids, 5, verbose=True)
+            print('\nTranslated:')
+            pr_translated = query_result(search_engine, i, query, expected, doc_ids, 5, verbose=True)
+            print('\n-- P/r original: {}, p/r translated: {}'.format(pr_original, pr_translated))
+            total_precision_original += pr_original.precision
+            total_recall_original += pr_original.recall
+            total_precision_translated += pr_translated.precision
+            total_recall_translated += pr_translated.recall
+
+        print('\n-- Totals:')
+        print('\n-- P/r original: {:.2f} {:.2f}, p/r translated: {:.2f} {:.2f}'.format(total_precision_original,
+                                                                                       total_recall_original,
+                                                                                       total_precision_translated,
+                                                                                       total_recall_translated))
+    return inner
 
 
 '''

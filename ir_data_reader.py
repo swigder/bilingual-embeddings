@@ -6,6 +6,7 @@ from collections import namedtuple, OrderedDict
 from text_tools import tokenize, normalize, detect_phrases, replace_phrases
 
 IrCollection = namedtuple('IrCollection', ['name', 'documents', 'queries', 'relevance'])
+BilingualIrCollection = namedtuple('BilingualIrCollection', IrCollection._fields + ('queries_translated',))
 
 
 def sub_collection(ir_collection, query):
@@ -20,11 +21,12 @@ def dir_appender(dir_location):
 
 
 class IrDataReader:
-    def __init__(self, name, doc_file, query_file, relevance_file):
+    def __init__(self, name, doc_file, query_file, relevance_file, translated_query_file=None):
         self.name = name
         self.doc_file = doc_file
         self.query_file = query_file
         self.relevance_file = relevance_file
+        self.translated_query_file = translated_query_file
 
     def _read_file(self, file, extract_id_fn):
         items = OrderedDict()
@@ -49,16 +51,23 @@ class IrDataReader:
         return items
 
     def read_documents_queries_relevance(self):
-        return IrCollection(name=self.name,
-                            documents=self.read_documents(),
-                            queries=self.read_queries(),
-                            relevance=self.read_relevance_judgments())
+        documents = self._read_file(self.doc_file, self.extract_doc_id)
+        queries = self._read_file(self.query_file, self.extract_query_id)
+        relevance_judgements = self.read_relevance_judgments()
 
-    def read_documents(self):
-        return self._read_file(self.doc_file, self.extract_doc_id)
+        if not self.translated_query_file or not os.path.isfile(self.translated_query_file):
+            return IrCollection(name=self.name,
+                                documents=documents,
+                                queries=queries,
+                                relevance=relevance_judgements)
 
-    def read_queries(self):
-        return self._read_file(self.query_file, self.extract_query_id)
+        queries_translated = self._read_file(self.translated_query_file, self.extract_query_id)
+
+        return BilingualIrCollection(name=self.name,
+                                     documents=documents,
+                                     queries=queries,
+                                     queries_translated=queries_translated,
+                                     relevance=relevance_judgements)
 
     def read_relevance_judgments(self):
         items = OrderedDict()
@@ -91,15 +100,10 @@ class IrDataReader:
 class StandardReader(IrDataReader):
     def __init__(self, name, data_dir):
         f = lambda t: os.path.join(data_dir, '{}-{}.txt'.format(name, t))
-        super().__init__(name=name, doc_file=f('documents'), query_file=f('queries'), relevance_file=f('relevance'))
+        super().__init__(name=name, doc_file=f('documents'), query_file=f('queries'), relevance_file=f('relevance'),
+                         translated_query_file=f('queries_translated'))
         self.extract_doc_id = self.extract_id
         self.extract_query_id = self.extract_id
-
-    def read_documents_queries_relevance(self):
-        return IrCollection(name=self.name,
-                            documents=self.read_documents(),
-                            queries=self.read_queries(),
-                            relevance=self.read_relevance_judgments())
 
     @staticmethod
     def safe_int(string):
