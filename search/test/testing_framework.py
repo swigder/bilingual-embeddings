@@ -123,11 +123,13 @@ def bilingual(test):
             total_precision_translated += pr_translated.precision
             total_recall_translated += pr_translated.recall
 
+        count = len(collection.queries_translated)
+
         print('\n-- Totals:')
-        print('\n-- P/r original: {:.2f} {:.2f}, p/r translated: {:.2f} {:.2f}'.format(total_precision_original,
-                                                                                       total_recall_original,
-                                                                                       total_precision_translated,
-                                                                                       total_recall_translated))
+        print('-- P/r original: {:.2f} {:.2f}, p/r translated: {:.2f} {:.2f}'.format(total_precision_original / count,
+                                                                                     total_recall_original / count,
+                                                                                     total_precision_translated / count,
+                                                                                     total_recall_translated / count))
     return inner
 
 

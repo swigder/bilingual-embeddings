@@ -100,7 +100,10 @@ class IrDataReader:
 class StandardReader(IrDataReader):
     def __init__(self, name, data_dir):
         f = lambda t: os.path.join(data_dir, '{}-{}.txt'.format(name, t))
-        super().__init__(name=name, doc_file=f('documents'), query_file=f('queries'), relevance_file=f('relevance'),
+        super().__init__(name=name,
+                         doc_file=f('documents'),
+                         query_file=f('queries_untranslated'),
+                         relevance_file=f('relevance'),
                          translated_query_file=f('queries_translated'))
         self.extract_doc_id = self.extract_id
         self.extract_query_id = self.extract_id
