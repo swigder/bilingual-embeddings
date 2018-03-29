@@ -126,17 +126,17 @@ if __name__ == "__main__":
                         help='Embedding format for domain-specific embedding')
     parser.add_argument('-e', '--embed', type=str, nargs='*',
                         help='Embedding location for general purpose embedding')
-    parser.add_argument('-t', '--types', choices=list(readers.keys()) + ['all'], default='all')
+    parser.add_argument('-c', '--collections', choices=list(readers.keys()) + ['all'], default='all')
     parser.add_argument('-n', '--number_results', type=int, default=5)
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-b', '--baseline', action='store_true')
-    parser.add_argument('-c', '--compare', action='store_true')
+    parser.add_argument('-cp', '--compare', action='store_true')
     parser.add_argument('-d', '--df_file', type=str, help='File with precomputed df', default=None)
 
     args = parser.parse_args()
 
-    if args.types == 'all':
-        args.types = list(readers.keys())
+    if args.collections == 'all':
+        args.collections = list(readers.keys())
 
     if not args.ir_dir:
         args.ir_dir = '/Users/xx/Documents/school/kth/thesis/ir-datasets/'

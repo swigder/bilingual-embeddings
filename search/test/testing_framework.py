@@ -93,7 +93,7 @@ def vary_embeddings(test):
     return inner
 
 
-def split_types(f):
+def split_collections(f):
     return lambda cs, a: (f(c, a) for c in cs)
 
 
@@ -170,6 +170,11 @@ Print result
 
 
 def print_table(data, args):
+    if args.column_order:
+        try:
+            data = data[data.columns[list(map(int, list(args.column_order)))]]
+        except:
+            print('Unable to rearrange columns!')  # don't want to fail just cuz we can't rearrange columns
     pd.set_option('precision', args.precision)
     if args.latex:
         print(data.to_latex())

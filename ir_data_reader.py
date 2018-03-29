@@ -294,7 +294,7 @@ if __name__ == "__main__":
     parser.add_argument('dir', type=str, help='Directory with files')
 
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument('-t', '--types', nargs='+', choices=list(readers.keys()) + ['all'], default='all')
+    parent_parser.add_argument('-c', '--collections', nargs='+', choices=list(readers.keys()) + ['all'], default='all')
 
     subparsers = parser.add_subparsers()
 
@@ -316,7 +316,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.types == 'all':
-        args.types = list(readers.keys())
+    if args.collections == 'all':
+        args.collections = list(readers.keys())
 
-    args.func([read_collection(base_dir=args.dir, collection_name=name, standard=args.standard) for name in args.types], args)
+    collections = [read_collection(base_dir=args.dir, collection_name=name, standard=args.standard)
+                   for name in args.collections]
+    args.func(collections, args)
