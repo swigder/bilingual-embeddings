@@ -6,8 +6,8 @@ from .testing_framework import vary_embeddings, search_test, embed_to_engine, pr
 from ir_data_reader import readers, read_collection
 
 
-parser = argparse.ArgumentParser(description='IR data reader.')
-subparsers = parser.add_subparsers()
+parser = argparse.ArgumentParser(description='Run tests on search engine.')
+subparsers = parser.add_subparsers(title='subcommands')
 
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument('ir_dir', type=str, help='Directory with IR files')
@@ -17,11 +17,12 @@ parent_parser.add_argument('-s', '--subword', action='store_true')
 parent_parser.add_argument('-hp', '--hyperparams', action='store_true')
 parent_parser.add_argument('-q', '--query_id', type=str, nargs='*')
 
-parent_parser.add_argument('-fc', '--column', type=str, nargs='?')
-parent_parser.add_argument('-fo', '--column_order', type=str, nargs='?')
-parent_parser.add_argument('-fl', '--latex', action='store_true')
-parent_parser.add_argument('-fp', '--precision', type=int, default=4)
-parent_parser.add_argument('-fx', '--x_axis', type=str, default='')
+formatting_group = parent_parser.add_argument_group('formatting')
+formatting_group.add_argument('-fc', '--column', type=str, nargs='?', help='column to show')
+formatting_group.add_argument('-fo', '--column_order', type=str, nargs='?', help='0-indexed column order')
+formatting_group.add_argument('-fl', '--latex', action='store_true', help='display as latex table')
+formatting_group.add_argument('-fp', '--precision', type=int, default=4, help='decimal precision')
+formatting_group.add_argument('-fx', '--x_axis', type=str, default='', help='x axis name for chart')
 
 parent_parser.add_argument('-d', '--domain_embed', type=str, nargs='*',
                            help='Embedding format for domain-specific embedding')

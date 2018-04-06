@@ -216,7 +216,7 @@ class OhsuReader(IrDataReader):
         return False
 
 
-readers = {'time': TimeReader, 'adi': AdiReader, 'ohsu-trec': OhsuReader}
+readers = {'adi': AdiReader, 'time': TimeReader, 'ohsu-trec': OhsuReader}
 
 
 def print_description(items, description):

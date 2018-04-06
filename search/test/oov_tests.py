@@ -6,7 +6,7 @@ from text_tools import tokenize, normalize
 OOV test - how many OOV terms in the queries wrt document collection or embeddings.
 '''
 
-oov_columns = ['tokens', 'tokens-oov', 'unique', 'unique-oov', 'examples']
+oov_columns = ['tokens-count', 'tokens-rate', 'unique-count', 'unique-rate']
 
 
 def oov_rate(iv, oov):

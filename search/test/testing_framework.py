@@ -39,10 +39,10 @@ def vary_embeddings(test):
         domain_embed = base_name_map(parsed_args.domain_embed)
 
         # embeddings are slow to load. fail fast if one doesn't exist.
-        for path in non_domain_embed.values():
-            if not os.path.exists(path):
-                raise FileNotFoundError(path)
         if not parsed_args.hyperparams:
+            for path in non_domain_embed.values():
+                if not os.path.exists(path):
+                    raise FileNotFoundError(path)
             for path in domain_embed.values():
                 for collection in collections:
                     if not os.path.exists(path.format(collection.name)):

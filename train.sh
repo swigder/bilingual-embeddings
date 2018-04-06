@@ -7,8 +7,8 @@ output_dir=/Users/xx/thesis/embed
 collection=''
 pretrained=''
 subword=3
-epoch=40
-window=5
+epoch=20
+window=20
 min=2
 dim=300
 
@@ -47,17 +47,22 @@ training_file=${training_dir}/${collection}.txt
 
 output_suffix="${collection}"
 if [ -n "${pretrained}" ]; then
-    output_suffix="${output_suffix}-${pretrained}"
+    output_suffix="${output_suffix}-${pretrained%.*}"
 else
     output_suffix="${output_suffix}-only"
 fi
-output_suffix="${output_suffix}-sub-${subword}-win-${window}"
+output_suffix="${output_suffix}-sub-${subword}-win-${window}-epochs-${epoch}"
 output_file=${output_dir}/${output_suffix}
 
-if [ "${pretrained}" == "pubmed" ]; then
+if [ "${pretrained}" == "pubmed.bin" ]; then
   dim=200
 fi
 
 echo "Training to ${output_file}"
 
-${fasttext} skipgram -input ${training_file} -output ${output_file} -dim ${dim} -epoch ${epoch} -minCount ${min} -minn ${subword} -ws ${window}
+additional_params=""
+if [ -n "${pretrained}" ]; then
+    additional_params="${additional_params} -pretrainedVectors ${output_dir}/${pretrained}"
+fi
+
+${fasttext} skipgram -input ${training_file} -output ${output_file} -dim ${dim} -epoch ${epoch} -minCount ${min} -minn ${subword} -ws ${window} ${additional_params}
