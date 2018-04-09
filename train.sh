@@ -2,19 +2,20 @@
 
 fasttext=/Users/xx/thesis/fastText/fasttext
 training_dir=/Users/xx/thesis/embed-train
-output_dir=/Users/xx/thesis/embed
+embed_dir=/Users/xx/thesis/embed
+output_dir="${embed_dir}"
 
 collection=''
 pretrained=''
 subword=3
-epoch=20
+epoch=0
 window=20
 min=2
 dim=300
 
 OPTIND=1
 
-while getopts "c:p:s:e:w:m:d:" opt; do
+while getopts "c:p:s:e:w:m:d:o:" opt; do
     case "$opt" in
     c)  collection=$OPTARG
         ;;
@@ -30,6 +31,8 @@ while getopts "c:p:s:e:w:m:d:" opt; do
         ;;
     d)  dim=$OPTARG
         ;;
+    o)  output_dir=$OPTARG
+        ;;
     esac
 done
 
@@ -43,6 +46,17 @@ if [ -z "${collection}" ]; then
     echo "Collection (-c) is required!"
     exit 1
 fi
+if [ "$epoch" -eq "0" ]; then
+    if [ -n "${pretrained}" ]; then
+        epoch=5
+    elif [ "${collection}" == "adi" ]; then
+        epoch=40
+    else
+        epoch=20
+    fi
+fi
+
+
 training_file=${training_dir}/${collection}.txt
 
 output_suffix="${collection}"
@@ -62,7 +76,7 @@ echo "Training to ${output_file}"
 
 additional_params=""
 if [ -n "${pretrained}" ]; then
-    additional_params="${additional_params} -pretrainedVectors ${output_dir}/${pretrained}"
+    additional_params="${additional_params} -pretrainedVectors ${embed_dir}/${pretrained}"
 fi
 
 ${fasttext} skipgram -input ${training_file} -output ${output_file} -dim ${dim} -epoch ${epoch} -minCount ${min} -minn ${subword} -ws ${window} ${additional_params}
