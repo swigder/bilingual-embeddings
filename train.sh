@@ -46,6 +46,8 @@ if [ -z "${collection}" ]; then
     echo "Collection (-c) is required!"
     exit 1
 fi
+
+output_suffix=""
 if [ "$epoch" -eq "0" ]; then
     if [ -n "${pretrained}" ]; then
         epoch=5
@@ -54,29 +56,30 @@ if [ "$epoch" -eq "0" ]; then
     else
         epoch=20
     fi
+else
+    output_suffix="${output_suffix}-epochs-${epoch}"
 fi
-
 
 training_file=${training_dir}/${collection}.txt
 
-output_suffix="${collection}"
+output_file="${collection}"
 if [ -n "${pretrained}" ]; then
-    output_suffix="${output_suffix}-${pretrained%.*}"
+    output_file="${output_file}-${pretrained%.*}"
 else
-    output_suffix="${output_suffix}-only"
+    output_file="${output_file}-only"
 fi
-output_suffix="${output_suffix}-sub-${subword}-win-${window}-epochs-${epoch}"
-output_file=${output_dir}/${output_suffix}
+output_file="${output_file}-sub-${subword}-win-${window}${output_suffix}"
+output_path=${output_dir}/${output_file}
 
 if [ "${pretrained}" == "pubmed.bin" ]; then
   dim=200
 fi
 
-echo "Training to ${output_file}"
+echo "Training to ${output_path}"
 
 additional_params=""
 if [ -n "${pretrained}" ]; then
     additional_params="${additional_params} -pretrainedVectors ${embed_dir}/${pretrained}"
 fi
 
-${fasttext} skipgram -input ${training_file} -output ${output_file} -dim ${dim} -epoch ${epoch} -minCount ${min} -minn ${subword} -ws ${window} ${additional_params}
+${fasttext} skipgram -input ${training_file} -output ${output_path} -dim ${dim} -epoch ${epoch} -minCount ${min} -minn ${subword} -ws ${window} ${additional_params}
