@@ -71,7 +71,7 @@ fi
 output_file="${output_file}-sub-${subword}-win-${window}${output_suffix}"
 output_path=${output_dir}/${output_file}
 
-if [ "${pretrained}" == "pubmed.bin" ]; then
+if [ "${pretrained}" == "pubmed.vec" ]; then
   dim=200
 fi
 
@@ -82,4 +82,10 @@ if [ -n "${pretrained}" ]; then
     additional_params="${additional_params} -pretrainedVectors ${embed_dir}/${pretrained}"
 fi
 
-${fasttext} skipgram -input ${training_file} -output ${output_path} -dim ${dim} -epoch ${epoch} -minCount ${min} -minn ${subword} -ws ${window} ${additional_params}
+cmd="${fasttext} skipgram -input ${training_file} -output ${output_path} -dim ${dim} -epoch ${epoch} -minCount ${min} -minn ${subword} -ws ${window} ${additional_params}"
+
+echo "${cmd}"
+
+${cmd}
+
+

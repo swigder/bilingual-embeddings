@@ -6,7 +6,7 @@ from text_tools import tokenize, normalize
 OOV test - how many OOV terms in the queries wrt document collection or embeddings.
 '''
 
-oov_columns = ['tokens-count', 'tokens-rate', 'unique-count', 'unique-rate']
+oov_columns = ['tokens-count', 'tokens-rate', 'type-count', 'type-rate']
 
 
 def oov_rate(iv, oov):
@@ -28,8 +28,8 @@ def oov_details(tokens, vocabulary):
     in_vocabulary_set, out_of_vocabulary_set = set(in_vocabulary), set(out_of_vocabulary)
     return {'tokens-count': len(out_of_vocabulary),
             'tokens-rate': oov_rate(in_vocabulary, out_of_vocabulary),
-            'unique-count': len(out_of_vocabulary_set),
-            'unique-rate': oov_rate(in_vocabulary_set, out_of_vocabulary_set), }
+            'type-count': len(out_of_vocabulary_set),
+            'type-rate': oov_rate(in_vocabulary_set, out_of_vocabulary_set), }
     # 'examples': list(out_of_vocabulary_set)[:10]}
 
 

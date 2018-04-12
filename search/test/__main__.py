@@ -35,6 +35,9 @@ embedding_group.add_argument('-ed', '--domain_embed', type=str, nargs='*',
 embedding_group.add_argument('-eg', '--embed', type=str, nargs='*',
                              help='Embedding location for general purpose embedding')
 
+interactive_parser = subparsers.add_parser('interactive', parents=[parent_parser])
+interactive_parser.set_defaults(func=None)
+
 oov_parser = subparsers.add_parser('oov', parents=[parent_parser])
 oov_parser.set_defaults(func=vary_embeddings(oov_test))
 
@@ -61,9 +64,11 @@ if args.collections == 'all':
     args.collections = list(readers.keys())
 
 collections = [read_collection(base_dir=args.ir_dir, collection_name=name) for name in args.collections]
-result = multirun_map(args.func)(collections, args)
 
-if not args.x_axis:
-    print_table(result, args)
-else:
-    display_chart(result, args)
+if args.func:
+    result = multirun_map(args.func)(collections, args)
+
+    if not args.x_axis:
+        print_table(result, args)
+    else:
+        display_chart(result, args)

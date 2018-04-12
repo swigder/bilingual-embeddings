@@ -186,7 +186,8 @@ def search_test_map(collection, search_engine):
     doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
     for i, query in collection.queries.items():
         expected = collection.relevance[i]
-        total_average_precision += query_result(search_engine, i, query, expected, doc_ids, 10, verbose=False,
+        total_average_precision += query_result(search_engine, i, query, expected, doc_ids, 10,
+                                                verbose=False,
                                                 metric=average_precision)
     return total_average_precision / len(collection.queries)
 
