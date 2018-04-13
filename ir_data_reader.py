@@ -145,6 +145,8 @@ class TimeReader(IrDataReader):
 
     def extract_relevance(self, line):
         query_id, *doc_ids = map(int, line.split())
+        # fix issue with offsets for certain relevance judgements due to missing documents
+        doc_ids = [doc_id - 2 if doc_id >= 417 else doc_id - 1 if doc_id >= 413 else doc_id for doc_id in doc_ids]
         return query_id, doc_ids
 
     def skip_line(self, line):
