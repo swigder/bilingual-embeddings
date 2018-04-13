@@ -3,7 +3,7 @@ import argparse
 from .df_tests import vary_df, add_df_parser_options
 from .oov_tests import oov_test
 from .testing_framework import vary_embeddings, search_test, embed_to_engine, print_table, display_chart, bilingual, \
-    hyperparameters, multirun_map
+    hyperparameters, multirun_map, recall_test
 from ir_data_reader import readers, read_collection
 
 
@@ -43,6 +43,9 @@ oov_parser.set_defaults(func=vary_embeddings(oov_test))
 
 embedding_search_parser = subparsers.add_parser('embed', parents=[parent_parser])
 embedding_search_parser.set_defaults(func=vary_embeddings(embed_to_engine(search_test)))
+
+recall_search_parser = subparsers.add_parser('recall', parents=[parent_parser])
+recall_search_parser.set_defaults(func=vary_embeddings(embed_to_engine(recall_test)))
 
 hyperparameters_search_parser = subparsers.add_parser('hyperparameters', parents=[parent_parser])
 hyperparameters_search_parser.add_argument('-r', '--relative', type=str, nargs='?', help='column to show relative to')

@@ -6,6 +6,7 @@ from collections import namedtuple
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from numpy import average
 
 from baseline import CosineSimilaritySearchEngine
 from dictionary import MonolingualDictionary, SubwordDictionary, BilingualDictionary
@@ -16,6 +17,10 @@ EmbeddingsTest = namedtuple('EmbeddingsTest', ['f', 'non_embed', 'columns'])
 
 base_name_map = lambda ps: {os.path.splitext(os.path.basename(p))[0].replace('{}-', 'Coll+'): p for p in ps or []}
 df_value_gen = lambda parsed_args: lambda value: value if not parsed_args.column else value[parsed_args.column]
+
+
+def dictionary(embed_path, parsed_args):
+    return SubwordDictionary(embed_path) if parsed_args.subword else MonolingualDictionary(embed_path)
 
 
 def multirun_map(test):
@@ -51,7 +56,7 @@ def hyperparameters(test):
                 globbed_path = domain_embed_path.format(collection.name)
                 embeds = glob.glob(globbed_path)
                 for embed_path in embeds:
-                    embed = MonolingualDictionary(embed_path)
+                    embed = dictionary(embed_path, parsed_args)
                     star = globbed_path.index('*')
                     column = embed_path[star:star-len(globbed_path)+1]
                     df.loc[collection.name, column] = df_value(test.f(collection, embed))
@@ -77,9 +82,6 @@ def embed_to_engine(test):
 
 def vary_embeddings(test):
     def inner(collections, parsed_args):
-        def dictionary(embed_path):
-            return SubwordDictionary(embed_path) if parsed_args.subword else MonolingualDictionary(embed_path)
-
         df_value = df_value_gen(parsed_args)
 
         # use base name as prettier format, None -> []
@@ -108,7 +110,7 @@ def vary_embeddings(test):
         # embeddings are slow to load and take up a lot of memory. load them only once for all collections, and release
         # them quickly.
         for embed_name, path in non_domain_embed.items():
-            embed = dictionary(path)
+            embed = dictionary(path, parsed_args)
             for collection in collections:
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
 
@@ -116,7 +118,7 @@ def vary_embeddings(test):
             if baseline:
                 df.loc[collection.name, test.non_embed] = df_value(test.f(collection, None))
             for embed_name, path in domain_embed.items():
-                embed = dictionary(path.format(collection.name))
+                embed = dictionary(path.format(collection.name), parsed_args)
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
         return df
 
@@ -193,6 +195,36 @@ def search_test_map(collection, search_engine):
 
 
 search_test = EmbeddingsTest(f=search_test_map, columns=['MAP@10'], non_embed='baseline')
+
+
+def recall_test_f(collection, search_engine):
+    max_distances = []
+    max_ranks = []
+    doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
+    for i, query in collection.queries.items():
+        expected = collection.relevance[i]
+        # for n in range(100, len(doc_ids) + 100, 100):
+        #     results = search_engine.query_index(query, n_results=n)
+        #     result_ids = [doc_ids[result[1]] for result in results]
+        #     if not set(expected).issubset(result_ids):
+        #         continue
+        #     max_rank = max([result_ids.index(expected_i) for expected_i in expected])
+        #     max_distances.append(results[max_rank][0])
+        #     max_ranks.append(max_rank)
+        #     break
+        results = search_engine.query_index(query, n_results=len(doc_ids))
+        max_ranks.append(0)
+        max_distances.append(results[-1][0])
+    assert len(max_distances) == len(max_ranks) == len(collection.queries)
+    return {'Max dist (avg)': average(max_distances),
+            'Max dist (max)': max(max_distances),
+            'Max rank (avg)': average(max_ranks),
+            'Max rank (max)': max(max_ranks),}
+
+
+recall_test = EmbeddingsTest(f=recall_test_f,
+                             columns=['Max dist (avg)', 'Max dist (max)', 'Max rank (avg)', 'Max rank (max)'],
+                             non_embed='baseline')
 
 
 '''

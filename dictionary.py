@@ -39,7 +39,12 @@ class SubwordDictionary(Dictionary):
 
 class MonolingualDictionary(Dictionary):
     def __init__(self, emb_file, language=None):
-        self.emb = EuclideanKeyedVectors.load_word2vec_format(emb_file, binary=os.path.splitext(emb_file)[1] == '.bin')
+        try:
+            self.emb = EuclideanKeyedVectors.load_word2vec_format(emb_file,
+                                                                  binary=os.path.splitext(emb_file)[1] == '.bin')
+        except Exception:
+            print('Error with embed file:', emb_file)
+            raise
         self.vector_dimensionality = self.emb.vector_size
         self.language = language if language is not None else os.path.basename(emb_file).split('.')[0]
 

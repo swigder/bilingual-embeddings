@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-fasttext=/Users/xx/thesis/fastText/fasttext
-training_dir=/Users/xx/thesis/embed-train
-embed_dir=/Users/xx/thesis/embed
+thesis_home=/Users/xx/thesis
+fasttext="${thesis_home}/fastText/fasttext"
+training_dir="${thesis_home}/embed-train"
+embed_dir="${thesis_home}/embed"
 output_dir="${embed_dir}"
 
 collection=''
@@ -69,7 +70,7 @@ else
     output_file="${output_file}-only"
 fi
 output_file="${output_file}-sub-${subword}-win-${window}${output_suffix}"
-output_path=${output_dir}/${output_file}
+output_path="${output_dir}/${output_file}"
 
 if [ "${pretrained}" == "pubmed.vec" ]; then
   dim=200

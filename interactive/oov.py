@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 from test.__main__ import collections, args
 from test.oov_tests import oov_test
@@ -23,17 +24,19 @@ def get_df():
     map_result = multirun_map(args.func)(collections, args)
 
     df = pd.merge(oov_result, map_result, left_index=True, right_index=True)
-    df = df.drop(['tokens-count', 'unique-count', 'unique-rate'], axis=1)
+    df = df.drop(['tokens-count', 'type-count', 'type-rate'], axis=1)
     df = df.astype('float64')
 
     return df
 
 
 def plot():
+    sns.set()
     plt.scatter(df.loc['adi', 'tokens-rate'], df.loc['adi', 'MAP@10'], label='adi', marker='o')
     plt.scatter(df.loc['time', 'tokens-rate'], df.loc['time', 'MAP@10'], label='time', marker='x')
     plt.scatter(df.loc['ohsu-trec', 'tokens-rate'], df.loc['ohsu-trec', 'MAP@10'], label='ohsu-trec', marker='^')
     plt.legend(frameon=True).get_frame().set_facecolor('white')
+    plt.title('OOV rate vs performance across embeddings')
     plt.xlabel('OOV rate')
     plt.ylabel('MAP@10')
     plt.show()
