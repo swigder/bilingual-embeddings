@@ -13,6 +13,7 @@ from dictionary import MonolingualDictionary, SubwordDictionary, BilingualDictio
 from search_engine import EmbeddingSearchEngine, BilingualEmbeddingSearchEngine
 from .run_tests import query_result, f1_score, average_precision
 
+
 EmbeddingsTest = namedtuple('EmbeddingsTest', ['f', 'non_embed', 'columns'])
 
 base_name_map = lambda ps: {os.path.splitext(os.path.basename(p))[0].replace('{}-', 'Coll+'): p for p in ps or []}

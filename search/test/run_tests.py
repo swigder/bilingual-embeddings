@@ -53,7 +53,7 @@ def query_result(search_engine, i, query, expected, documents, n=5, verbose=Fals
         result_i = documents[result]
         results_i.append(result_i)
         if verbose:
-            print(result_i, distance, result[:300])
+            print(result_i, distance, result[:100])
             if result_i in expected:
                 print('Correct!')
     return metric(expected=expected, actual=results_i)
