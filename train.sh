@@ -8,7 +8,7 @@ output_dir="${embed_dir}"
 
 collection=''
 pretrained=''
-subword=3
+subword=4
 epoch=0
 window=20
 min=2
