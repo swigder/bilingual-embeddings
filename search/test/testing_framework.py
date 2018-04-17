@@ -13,7 +13,6 @@ from dictionary import MonolingualDictionary, SubwordDictionary, BilingualDictio
 from search_engine import EmbeddingSearchEngine, BilingualEmbeddingSearchEngine
 from .run_tests import query_result, f1_score, average_precision
 
-
 EmbeddingsTest = namedtuple('EmbeddingsTest', ['f', 'non_embed', 'columns'])
 
 base_name_map = lambda ps: {os.path.splitext(os.path.basename(p))[0].replace('{}-', 'Coll+'): p for p in ps or []}
@@ -135,9 +134,14 @@ def bilingual(test):
         if len(collections) != 1:
             raise ValueError
         collection = collections[0]
-        dictionary = BilingualDictionary(parsed_args.doc_embed, parsed_args.query_embed)
-        search_engine = BilingualEmbeddingSearchEngine(dictionary=dictionary)
-        search_engine.index_documents(collection.documents.values())
+        bilingual_dictionary = BilingualDictionary(src_emb_file=parsed_args.doc_embed,
+                                                   tgt_emb_file=parsed_args.query_embed,
+                                                   src_lang='doc', tgt_lang='query', default_lang='doc')
+        monolingual_search_engine = EmbeddingSearchEngine(dictionary=MonolingualDictionary(parsed_args.doc_embed))
+        bilingual_search_engine = BilingualEmbeddingSearchEngine(dictionary=bilingual_dictionary,
+                                                                 doc_lang='doc', query_lang='query')
+        monolingual_search_engine.index_documents(collection.documents.values())
+        bilingual_search_engine.index_documents(collection.documents.values())
         doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
 
         total_precision_original, total_recall_original = 0, 0
@@ -146,9 +150,10 @@ def bilingual(test):
         for i, query in collection.queries_translated.items():
             expected = collection.relevance[i]
             print('\nOriginal:')
-            pr_original = query_result(search_engine, i, collection.queries[i], expected, doc_ids, 5, verbose=True)
+            pr_original = query_result(monolingual_search_engine, i, collection.queries[i], expected, doc_ids, 5,
+                                       verbose=True)
             print('\nTranslated:')
-            pr_translated = query_result(search_engine, i, query, expected, doc_ids, 5, verbose=True)
+            pr_translated = query_result(bilingual_search_engine, i, query, expected, doc_ids, 5, verbose=True)
             print('\n-- P/r original: {}, p/r translated: {}'.format(pr_original, pr_translated))
             total_precision_original += pr_original.precision
             total_recall_original += pr_original.recall

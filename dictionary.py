@@ -1,9 +1,7 @@
-import argparse
-
 import os
 
 import numpy as np
-from gensim.models.keyedvectors import EuclideanKeyedVectors
+from gensim.models.deprecated.keyedvectors import EuclideanKeyedVectors
 import fastText
 
 
@@ -40,6 +38,7 @@ class SubwordDictionary(Dictionary):
 class MonolingualDictionary(Dictionary):
     def __init__(self, emb_file, language=None):
         try:
+            self.emb_file = emb_file
             self.emb = EuclideanKeyedVectors.load_word2vec_format(emb_file,
                                                                   binary=os.path.splitext(emb_file)[1] == '.bin')
         except Exception:
@@ -64,55 +63,26 @@ class MonolingualDictionary(Dictionary):
 
 
 class BilingualDictionary(Dictionary):
-    def __init__(self, src_emb_file, tgt_emb_file, subword=False):
+    def __init__(self, src_emb_file, tgt_emb_file, src_lang='src', tgt_lang='tgt', default_lang=None, subword=False):
         assert os.path.exists(src_emb_file) and os.path.exists(tgt_emb_file)  # slow to open so don't want to waste time
         cls = MonolingualDictionary if not subword else SubwordDictionary
-        self.src_emb = cls(emb_file=src_emb_file)
-        self.tgt_emb = cls(emb_file=tgt_emb_file)
-        assert self.src_emb.vector_dimensionality == self.tgt_emb.vector_dimensionality
-        self.vector_dimensionality = self.src_emb.vector_dimensionality
+        self.dictionaries = {src_lang: cls(emb_file=src_emb_file, language=src_lang),
+                             tgt_lang: cls(emb_file=tgt_emb_file, language=tgt_lang)}
+        self.default_lang = default_lang
+        assert self.dictionaries[src_lang].vector_dimensionality == self.dictionaries[tgt_lang].vector_dimensionality
+        self.vector_dimensionality = self.dictionaries[src_lang].vector_dimensionality
 
-    def _embeddings(self, reverse):
-        return (self.src_emb, self.tgt_emb) if not reverse else (self.tgt_emb, self.src_emb)
+    def word_vectors(self, tokens, lang=None):
+        lang = lang or self.default_lang
+        return self.dictionaries[lang].word_vectors(tokens)
 
-    def word_vectors(self, tokens, reverse=False):
-        src_emb, _ = self._embeddings(reverse)
-        return src_emb.word_vectors(tokens)
-
-    def translate(self, src_word, topn=1, reverse=False):
-        src_emb, tgt_emb = self._embeddings(reverse)
+    def translate(self, src_word, src_lang, topn=1):
+        src_lang = src_lang or self.default_lang
+        src_emb = self.dictionaries[src_lang]
+        tgt_emb = self.dictionaries[next(iter(set(self.dictionaries.keys()).difference({src_lang})))]
         src_vector = src_emb.word_vector(src_word)
         return tgt_emb.synonyms(src_vector, topn=topn, vector=True)
 
-    def synonyms(self, src_word, topn=1, reverse=False):
-        src_emb, _ = self._embeddings(reverse)
-        return src_emb.synonyms(src_word, topn=topn)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Bilingual Dictionary.')
-
-    parser.add_argument('src_emb_file', type=str, help='File with source embeddings')
-    parser.add_argument('tgt_emb_file', type=str, help='File with target embeddings')
-    parser.add_argument('-n', '--top_n', type=int, default=1, help='Number of translations to provide')
-    # parser.add_argument('--mode', default='command', choices=['command', 'interactive'])
-    # parser.add_argument()
-
-    args = parser.parse_args()
-
-    bi_dict = BilingualDictionary(args.src_emb_file, args.tgt_emb_file)
-
-    reverse = False
-
-    def language_direction():
-        return ('{1} -> {0}' if reverse else '{0} -> {1}').format(bi_dict.src_emb.language, bi_dict.tgt_emb.language)
-
-    print('Loaded dictionaries. Enter a word and hit enter to translate. Hit enter twice to reverse languages.')
-    print(language_direction())
-    while True:
-        word = input(">> ")
-        if not word:
-            reverse = not reverse
-            print('Reversed, new direction:', language_direction())
-            continue
-        print(bi_dict.translate(word, topn=args.top_n, reverse=reverse))
+    def synonyms(self, src_word, topn=1, lang=None):
+        lang = lang or self.default_lang
+        return self.dictionaries[lang].synonyms(src_word, topn=topn)
