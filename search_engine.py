@@ -107,33 +107,8 @@ class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
             # return np.sum(self.dictionary.word_vectors(tokens=tokens, lang=self.doc_lang), axis=0)
             return EmbeddingSearchEngine._vectorize(self, tokens, indexing)
         else:  # query language, df not available
-            return np.sum(self.dictionary.word_vectors(tokens=tokens, lang=self.query_lang), axis=0)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Search Engine.')
-
-    parser.add_argument('src_emb_file', type=str, help='File with document embeddings')
-    parser.add_argument('tgt_emb_file', type=str, help='File with query embeddings', default=None)
-
-    args = parser.parse_args()
-
-    if args.tgt_emb_file is None:  # monolingual
-        mono_dict = MonolingualDictionary(args.src_emb_file)
-        search_engine = EmbeddingSearchEngine(dictionary=mono_dict)
-    else:  # bilingual
-        bi_dict = BilingualDictionary(args.src_emb_file, args.tgt_emb_file)
-        search_engine = BilingualEmbeddingSearchEngine(dictionary=bi_dict)
-
-    print('Type each sentence to index, followed by enter. When done, hit enter twice.')
-    sentences = []
-    sentence = input(">> ")
-    while sentence:
-        sentences.append(sentence)
-        sentence = input(">> ")
-    search_engine.index_documents(sentences)
-
-    print('Type your query.')
-    while True:
-        query = input(">> ")
-        print(search_engine.query_index(query))
+            vector = np.sum(self.dictionary.word_vectors(tokens=tokens, lang=self.query_lang), axis=0)
+            oov_tokens = [token for token in tokens if token not in self.dictionary.dictionaries[self.query_lang]]
+            print('OOV', oov_tokens)
+            vector += np.sum(self.dictionary.word_vectors(tokens=oov_tokens, lang=self.doc_lang), axis=0)
+            return vector

@@ -19,8 +19,10 @@ base_name_map = lambda ps: {os.path.splitext(os.path.basename(p))[0].replace('{}
 df_value_gen = lambda parsed_args: lambda value: value if not parsed_args.column else value[parsed_args.column]
 
 
-def dictionary(embed_path, parsed_args):
-    return SubwordDictionary(embed_path) if parsed_args.subword else MonolingualDictionary(embed_path)
+def dictionary(embed_path, parsed_args, lang=None):
+    return SubwordDictionary(embed_path, language=lang) \
+        if parsed_args.subword \
+        else MonolingualDictionary(embed_path, language=lang)
 
 
 def multirun_map(test):
@@ -134,39 +136,38 @@ def bilingual(test):
         if len(collections) != 1:
             raise ValueError
         collection = collections[0]
-        bilingual_dictionary = BilingualDictionary(src_emb_file=parsed_args.doc_embed,
-                                                   tgt_emb_file=parsed_args.query_embed,
-                                                   src_lang='doc', tgt_lang='query', default_lang='doc')
-        monolingual_search_engine = EmbeddingSearchEngine(dictionary=MonolingualDictionary(parsed_args.doc_embed))
+
+        doc_dict = dictionary(parsed_args.doc_embed, parsed_args, 'doc')
+        query_dict = dictionary(parsed_args.query_embed, parsed_args, 'query')
+        bilingual_dictionary = BilingualDictionary(src_dict=doc_dict, tgt_dict=query_dict, default_lang='doc')
+
+        monolingual_search_engine = EmbeddingSearchEngine(dictionary=doc_dict)
         bilingual_search_engine = BilingualEmbeddingSearchEngine(dictionary=bilingual_dictionary,
                                                                  doc_lang='doc', query_lang='query')
         monolingual_search_engine.index_documents(collection.documents.values())
         bilingual_search_engine.index_documents(collection.documents.values())
+
         doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
 
-        total_precision_original, total_recall_original = 0, 0
-        total_precision_translated, total_recall_translated = 0, 0
+        total_average_precision_original = 0
+        total_average_precision_translated = 0
 
         for i, query in collection.queries_translated.items():
             expected = collection.relevance[i]
-            print('\nOriginal:')
-            pr_original = query_result(monolingual_search_engine, i, collection.queries[i], expected, doc_ids, 5,
-                                       verbose=True)
-            print('\nTranslated:')
-            pr_translated = query_result(bilingual_search_engine, i, query, expected, doc_ids, 5, verbose=True)
-            print('\n-- P/r original: {}, p/r translated: {}'.format(pr_original, pr_translated))
-            total_precision_original += pr_original.precision
-            total_recall_original += pr_original.recall
-            total_precision_translated += pr_translated.precision
-            total_recall_translated += pr_translated.recall
+            total_average_precision_original += query_result(monolingual_search_engine, i, collection.queries[i],
+                                                             expected, doc_ids, 10,
+                                                             verbose=True,
+                                                             metric=average_precision)
+            total_average_precision_translated += query_result(bilingual_search_engine, i, query,
+                                                               expected, doc_ids, 10,
+                                                               verbose=True,
+                                                               metric=average_precision)
 
         count = len(collection.queries_translated)
 
         print('\n-- Totals:')
-        print('-- P/r original: {:.2f} {:.2f}, p/r translated: {:.2f} {:.2f}'.format(total_precision_original / count,
-                                                                                     total_recall_original / count,
-                                                                                     total_precision_translated / count,
-                                                                                     total_recall_translated / count))
+        print('-- MAP original: {:.4f}, MAP translated: {:.4f}'.format(total_average_precision_original / count,
+                                                                       total_average_precision_translated / count))
     return inner
 
 

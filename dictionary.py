@@ -63,17 +63,18 @@ class MonolingualDictionary(Dictionary):
 
 
 class BilingualDictionary(Dictionary):
-    def __init__(self, src_emb_file, tgt_emb_file, src_lang='src', tgt_lang='tgt', default_lang=None, subword=False):
-        assert os.path.exists(src_emb_file) and os.path.exists(tgt_emb_file)  # slow to open so don't want to waste time
-        cls = MonolingualDictionary if not subword else SubwordDictionary
-        self.dictionaries = {src_lang: cls(emb_file=src_emb_file, language=src_lang),
-                             tgt_lang: cls(emb_file=tgt_emb_file, language=tgt_lang)}
+    def __init__(self, src_dict, tgt_dict, default_lang=None):
+        src_lang, tgt_lang = src_dict.language, tgt_dict.language
+        self.dictionaries = {src_lang: src_dict,
+                             tgt_lang: tgt_dict}
         self.default_lang = default_lang
         assert self.dictionaries[src_lang].vector_dimensionality == self.dictionaries[tgt_lang].vector_dimensionality
         self.vector_dimensionality = self.dictionaries[src_lang].vector_dimensionality
 
     def word_vectors(self, tokens, lang=None):
         lang = lang or self.default_lang
+        if lang is 'query':
+            print('Translations:', [(word, self.translate(word, lang)) for word in tokens])
         return self.dictionaries[lang].word_vectors(tokens)
 
     def translate(self, src_word, src_lang, topn=1):
