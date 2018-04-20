@@ -13,10 +13,11 @@ epoch=0
 window=20
 min=2
 dim=300
+buckets=0
 
 OPTIND=1
 
-while getopts "c:p:s:e:w:m:d:o:" opt; do
+while getopts "c:p:s:e:w:m:d:b:o:" opt; do
     case "$opt" in
     c)  collection=$OPTARG
         ;;
@@ -31,6 +32,8 @@ while getopts "c:p:s:e:w:m:d:o:" opt; do
     m)  min=$OPTARG
         ;;
     d)  dim=$OPTARG
+        ;;
+    b)  buckets=$OPTARG
         ;;
     o)  output_dir=$OPTARG
         ;;
@@ -49,6 +52,7 @@ if [ -z "${collection}" ]; then
 fi
 
 output_suffix=""
+additional_params=""
 if [ "$epoch" -eq "0" ]; then
     if [ -n "${pretrained}" ]; then
         epoch=5
@@ -59,6 +63,10 @@ if [ "$epoch" -eq "0" ]; then
     fi
 else
     output_suffix="${output_suffix}-epochs-${epoch}"
+fi
+if [ "$buckets" -ne "0" ]; then
+    additional_params="${additional_params} -bucket ${buckets}"
+    output_suffix="${output_suffix}-buckets-${buckets}"
 fi
 
 training_file=${training_dir}/${collection}.txt
@@ -78,7 +86,6 @@ fi
 
 echo "Training to ${output_path}"
 
-additional_params=""
 if [ -n "${pretrained}" ]; then
     additional_params="${additional_params} -pretrainedVectors ${embed_dir}/${pretrained}"
 fi
