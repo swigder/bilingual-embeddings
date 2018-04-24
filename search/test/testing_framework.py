@@ -4,8 +4,6 @@ import os
 from collections import namedtuple
 
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 from numpy import average
 
 from baseline import CosineSimilaritySearchEngine
@@ -56,7 +54,7 @@ def hyperparameters(test):
         for collection in collections:
             paths = list(parsed_args.embed)
             for domain_embed_path in parsed_args.domain_embed:
-                paths.append(domain_embed_path.format(collection.name))
+                paths.altpend(domain_embed_path.format(collection.name))
             for globbed_path in paths:
                 embeds = glob.glob(globbed_path)
                 for embed_path in embeds:
@@ -269,6 +267,9 @@ def print_table(data, args):
 
 
 def display_chart(data, args):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     sns.set()
     data = reorder_columns(data, args)
     for row in data.index:

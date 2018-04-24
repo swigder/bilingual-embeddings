@@ -1,4 +1,3 @@
-import os
 import itertools
 
 from math import log
@@ -27,6 +26,7 @@ tf_fns = {
 }
 default_df_fns = {
     'zero': lambda dfs: 0,
+    'min': lambda dfs: np.min(dfs),  # min df = max weight
     'max': lambda dfs: np.max(dfs),  # min df = max weight
     'avg': lambda dfs: np.average(dfs),
 }
