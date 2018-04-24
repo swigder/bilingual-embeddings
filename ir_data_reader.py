@@ -120,7 +120,7 @@ class StandardReader(IrDataReader):
 
     def read_relevance_judgments(self):
         unsplit = self._read_file(self.relevance_file, self.extract_id)
-        return {self.safe_int(rid): list(map(int, rels.split())) for rid, rels in unsplit.items()}
+        return {self.safe_int(rid): list(map(self.safe_int, rels.split())) for rid, rels in unsplit.items()}
 
     def skip_line(self, line):
         return line.startswith('.count')
@@ -218,7 +218,66 @@ class OhsuReader(IrDataReader):
         return False
 
 
-readers = {'adi': AdiReader, 'time': TimeReader, 'ohsu-trec': OhsuReader}
+class FireReader(IrDataReader):
+    def __init__(self, name, data_dir):
+        self.name = name
+        self.data_dir = data_dir
+
+    def read_documents_queries_relevance(self):
+        import os
+
+        documents = {}
+        for subdir, dirs, files in os.walk('/Users/xx/thesis/ir-datasets/fire/documents'):
+            for file in files:
+                # print os.path.join(subdir, file)
+                if file.startswith('.'):
+                    continue
+                filepath = subdir + os.sep + file
+                doc_id = ''
+                text = ''
+                for line in open(filepath, 'r'):
+                    if not line:
+                        continue
+                    line = line.strip()
+                    if line.startswith('<DOCNO>'):
+                        doc_id = line[len('<DOCNO>'):-len('</DOCNO>')].strip()
+                    elif line.startswith('<TITLE>'):
+                        text += ' ' + line[len('<TITLE>'):-len('</TITLE>')].strip()
+                    elif not line.startswith('<'):
+                        text += ' ' + line
+                documents[doc_id] = text
+
+        queries = {}
+        query_id = ''
+        query_text = ''
+        for line in open('/Users/xx/thesis/ir-datasets/fire/queries/en.topics.126-175.2011.txt', 'r'):
+            line = line.strip()
+            if line.startswith('<num>'):
+                query_id = line[len('<num>'):-len('</num>')]
+            elif line.startswith('<desc>'):
+                query_text = line[len('<desc>'):-len('</desc>')]
+            elif line.startswith('</top>'):
+                queries[query_id] = query_text
+                query_id = query_text = ''
+
+        relevance_judgements = {}
+        for line in open('/Users/xx/thesis/ir-datasets/fire/relevance/en.qrels.126-175.2011.txt', 'r'):
+            if not line:
+                continue
+            query_id, _, doc_id, rel = line.split()
+            if rel is '0':
+                continue
+            if query_id not in relevance_judgements:
+                relevance_judgements[query_id] = []
+            relevance_judgements[query_id].append(doc_id)
+
+        return IrCollection(name=self.name,
+                            documents=documents,
+                            queries=queries,
+                            relevance=relevance_judgements)
+
+
+readers = {'adi': AdiReader, 'time': TimeReader, 'ohsu-trec': OhsuReader, 'fire': FireReader}
 
 
 def print_description(items, description):
@@ -233,7 +292,7 @@ def read_collection(base_dir, collection_name, standard=True):
     path = os.path.join(base_dir, collection_name)
     reader = StandardReader(name=collection_name, data_dir=path) \
         if standard \
-        else readers[collection_name](data_dir=path)
+        else readers[collection_name](name=collection_name, data_dir=path)
     return reader.read_documents_queries_relevance()
 
 
@@ -280,7 +339,8 @@ def write_to_standard_form(collection, parsed_args):
         phrases = detect_phrases([normalize(doc) for doc in collection.documents])
         transform_f = lambda l: ' '.join(tokenize(replace_phrases([normalize(l)], phrases=phrases)))
     else:
-        transform_f = lambda l: ' '.join(tokenize(normalize(l)))
+        # transform_f = lambda l: ' '.join(tokenize(normalize(l)))
+        transform_f = lambda l: ' '.join(filter(lambda s: len(s) > 1, tokenize(normalize(l))))
 
     write_to_file('documents', collection.documents, transform=transform_f)
     write_to_file('queries', collection.queries, transform=transform_f)

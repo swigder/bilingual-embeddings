@@ -1,12 +1,9 @@
-import argparse
-
 from collections import defaultdict
 from math import log
 
 import numpy as np
 from annoy import AnnoyIndex
 
-from dictionary import BilingualDictionary, MonolingualDictionary
 from document_frequencies import read_dfs
 from text_tools import normalize, tokenize
 
@@ -52,8 +49,8 @@ class SearchEngine:
 
 
 class EmbeddingSearchEngine(SearchEngine):
-    def __init__(self, dictionary, df_file=None, df_options={}):
-        super().__init__(df_file, df_options)
+    def __init__(self, dictionary, tf_function=None, df_options={}):
+        super().__init__(tf_function=tf_function, df_options=df_options)
 
         self.dictionary = dictionary
         self.index = AnnoyIndex(dictionary.vector_dimensionality, metric='angular')

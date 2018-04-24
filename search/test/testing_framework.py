@@ -54,8 +54,10 @@ def hyperparameters(test):
         df_value = df_value_gen(parsed_args)
 
         for collection in collections:
+            paths = list(parsed_args.embed)
             for domain_embed_path in parsed_args.domain_embed:
-                globbed_path = domain_embed_path.format(collection.name)
+                paths.append(domain_embed_path.format(collection.name))
+            for globbed_path in paths:
                 embeds = glob.glob(globbed_path)
                 for embed_path in embeds:
                     embed = dictionary(embed_path, parsed_args)
@@ -252,6 +254,8 @@ def reorder_columns(df, parsed_args):
             cols = list(map(str, sorted(map(int, cols))))
         except ValueError:
             cols = sorted(cols)
+        except TypeError:
+            pass
         return df[cols]
 
 
