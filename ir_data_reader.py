@@ -227,7 +227,7 @@ class FireReader(IrDataReader):
         import os
 
         documents = {}
-        for subdir, dirs, files in os.walk('/Users/xx/thesis/ir-datasets/fire/documents'):
+        for subdir, dirs, files in os.walk(os.path.join(self.data_dir, 'documents')):
             for file in files:
                 # print os.path.join(subdir, file)
                 if file.startswith('.'):
@@ -250,7 +250,7 @@ class FireReader(IrDataReader):
         queries = {}
         query_id = ''
         query_text = ''
-        for line in open('/Users/xx/thesis/ir-datasets/fire/queries/en.topics.126-175.2011.txt', 'r'):
+        for line in open(os.path.join(self.data_dir, 'queries/en.topics.126-175.2011.txt'), 'r'):
             line = line.strip()
             if line.startswith('<num>'):
                 query_id = line[len('<num>'):-len('</num>')]
@@ -261,7 +261,7 @@ class FireReader(IrDataReader):
                 query_id = query_text = ''
 
         relevance_judgements = {}
-        for line in open('/Users/xx/thesis/ir-datasets/fire/relevance/en.qrels.126-175.2011.txt', 'r'):
+        for line in open(os.path.join(self.data_dir, 'relevance/en.qrels.126-175.2011.txt'), 'r'):
             if not line:
                 continue
             query_id, _, doc_id, rel = line.split()
