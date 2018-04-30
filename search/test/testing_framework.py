@@ -52,7 +52,7 @@ def hyperparameters(test):
             for globbed_path in paths:
                 embeds = glob.glob(globbed_path)
                 for embed_path in embeds:
-                    embed = dictionary(embed_path, use_subword=parsed_args.subword)
+                    embed = dictionary(embed_path, use_subword=parsed_args.subword, normalize=parsed_args.normalize)
                     star = globbed_path.index('*')
                     column = embed_path[star:star-len(globbed_path)+1]
                     df.loc[collection.name, column] = df_value(test.f(collection, embed))
@@ -106,7 +106,7 @@ def vary_embeddings(test):
         # embeddings are slow to load and take up a lot of memory. load them only once for all collections, and release
         # them quickly.
         for embed_name, path in non_domain_embed.items():
-            embed = dictionary(path, use_subword=parsed_args.subword)
+            embed = dictionary(path, use_subword=parsed_args.subword, normalize=parsed_args.normalize)
             for collection in collections:
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
 
@@ -114,7 +114,8 @@ def vary_embeddings(test):
             if baseline:
                 df.loc[collection.name, test.non_embed] = df_value(test.f(collection, None))
             for embed_name, path in domain_embed.items():
-                embed = dictionary(path.format(collection.name), use_subword=parsed_args.subword)
+                embed = dictionary(path.format(collection.name),
+                                   use_subword=parsed_args.subword, normalize=parsed_args.normalize)
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
         return df
 
@@ -131,8 +132,10 @@ def bilingual(test):
             raise ValueError
         collection = collections[0]
 
-        doc_dict = dictionary(parsed_args.doc_embed, language='doc', use_subword=parsed_args.subword)
-        query_dict = dictionary(parsed_args.query_embed, language='query', use_subword=parsed_args.subword)
+        doc_dict = dictionary(parsed_args.doc_embed, language='doc',
+                              use_subword=parsed_args.subword, normalize=parsed_args.normalize)
+        query_dict = dictionary(parsed_args.query_embed, language='query',
+                                use_subword=parsed_args.subword, normalize=parsed_args.normalize)
         bilingual_dictionary = BilingualDictionary(src_dict=doc_dict, tgt_dict=query_dict, default_lang='doc')
 
         monolingual_search_engine = EmbeddingSearchEngine(dictionary=doc_dict)

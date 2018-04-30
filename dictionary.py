@@ -5,11 +5,11 @@ from gensim.models.deprecated.keyedvectors import EuclideanKeyedVectors
 import fastText
 
 
-def dictionary(emb_file, language=None, use_subword=False):
+def dictionary(emb_file, language=None, use_subword=False, normalize=True):
     try:
-        return FasttextDictionary(emb_file, language=language, use_subword=use_subword)
+        return FasttextDictionary(emb_file, language=language, use_subword=use_subword, normalize=normalize)
     except:
-        return GensimDictionary(emb_file, language)
+        return GensimDictionary(emb_file, language=language, normalize=normalize)
 
 
 class Dictionary:
@@ -24,8 +24,9 @@ class Dictionary:
 
 
 class MonolingualDictionary(Dictionary):
-    def __init__(self, emb_file, language):
+    def __init__(self, emb_file, language, normalize=True):
         self.language = language if language is not None else os.path.basename(emb_file).split('.')[0]
+        self.normalize = normalize
 
 
 class FasttextDictionary(MonolingualDictionary):
@@ -34,8 +35,8 @@ class FasttextDictionary(MonolingualDictionary):
     backed dictionary
     """
 
-    def __init__(self, emb_file, language=None, use_subword=True):
-        super().__init__(emb_file=emb_file, language=language)
+    def __init__(self, emb_file, language=None, use_subword=True, normalize=True):
+        super().__init__(emb_file=emb_file, language=language, normalize=normalize)
         self.emb = fastText.load_model(path=emb_file)
         self.vector_dimensionality = self.emb.get_dimension()
         self.use_subword = use_subword
@@ -45,7 +46,8 @@ class FasttextDictionary(MonolingualDictionary):
 
     def safe_word_vector(self, token):
         if self.use_subword or token in self:
-            return self.emb.get_word_vector(token)
+            v = self.emb.get_word_vector(token)
+            return v if not self.normalize else v / np.linalg.norm(v)
         else:
             return np.zeros(shape=(self.vector_dimensionality,))
 
@@ -57,12 +59,14 @@ class FasttextDictionary(MonolingualDictionary):
 
 
 class GensimDictionary(MonolingualDictionary):
-    def __init__(self, emb_file, language=None):
-        super().__init__(emb_file=emb_file, language=language)
+    def __init__(self, emb_file, language=None, normalize=True):
+        super().__init__(emb_file=emb_file, language=language, normalize=normalize)
         try:
             self.emb_file = emb_file
             self.emb = EuclideanKeyedVectors.load_word2vec_format(emb_file,
                                                                   binary=os.path.splitext(emb_file)[1] == '.bin')
+            if self.normalize:
+                self.emb.init_sims(replace=True)
         except Exception:
             print('Error with embed file:', emb_file)
             raise
