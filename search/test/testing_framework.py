@@ -255,10 +255,10 @@ def reorder_columns(df, parsed_args):
 
 
 def combine_multirun(results, grouping=True):
-    if results is not list:
+    if type(results) is not list:
         return results
     concat_results = pd.concat(results)
-    return concat_results.groupby(concat_results.index).mean() if grouping else concat_results
+    return concat_results.astype(float).groupby(concat_results.index).mean() if grouping else concat_results
 
 
 def print_table(data, args):
