@@ -3,7 +3,7 @@ import os
 from collections import namedtuple
 
 from baseline import CosineSimilaritySearchEngine
-from dictionary import MonolingualDictionary
+from dictionary import GensimDictionary
 from ir_data_reader import readers, sub_collection, read_collection
 from search_engine import EmbeddingSearchEngine
 
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     search_engines = {}
 
     if args.compare or not args.baseline:
-        mono_dict = MonolingualDictionary(emb_file=args.embed)
+        mono_dict = GensimDictionary(emb_file=args.embed)
         search_engines['Embedding'] = EmbeddingSearchEngine(dictionary=mono_dict, df_file=args.df_file)
     if args.compare or args.baseline:
         search_engines['Baseline'] = CosineSimilaritySearchEngine()
