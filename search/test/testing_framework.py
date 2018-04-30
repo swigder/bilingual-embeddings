@@ -1,4 +1,5 @@
 import copy
+import datetime
 import glob
 import os
 from collections import namedtuple
@@ -41,8 +42,7 @@ def multirun_map(test):
         results = []
         for base in filter(os.path.isdir, glob.glob(os.path.join(parsed_args.embed_location, '*'))):
             results.append(run_with_base(base))
-        concat_results = pd.concat(results)
-        return concat_results.groupby(concat_results.index).mean()
+        return results
     return inner
 
 
@@ -257,7 +257,15 @@ def reorder_columns(df, parsed_args):
         return df[cols]
 
 
+def combine_multirun(results, grouping=True):
+    if results is not list:
+        return results
+    concat_results = pd.concat(results)
+    return concat_results.groupby(concat_results.index).mean() if grouping else concat_results
+
+
 def print_table(data, args):
+    data = combine_multirun(data)
     data = reorder_columns(data, args)
     pd.set_option('precision', args.precision)
     if args.latex:
@@ -271,6 +279,7 @@ def display_chart(data, args):
     import seaborn as sns
 
     sns.set()
+    data = combine_multirun(data)
     data = reorder_columns(data, args)
     for row in data.index:
         plt.plot(data.loc[row], label=row)
@@ -282,6 +291,7 @@ def display_chart(data, args):
 
 
 def save_to_file(data, args):
+    data = combine_multirun(data, grouping=False)
     save_file = args.save_file
     if not save_file:
         save_dir = os.path.join(os.getcwd(), 'output')
