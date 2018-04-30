@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from baseline import CosineSimilaritySearchEngine
-from dictionary import MonolingualDictionary
+from dictionary import GensimDictionary
 from search_engine import EmbeddingSearchEngine
 
 
@@ -14,10 +14,10 @@ def generate_dict_getter(non_domain_embed, domain_embed):
     assert len(non_domain_embed) + len(domain_embed) == 1
 
     if len(non_domain_embed) == 1:
-        dictionary = MonolingualDictionary(non_domain_embed[0])
+        dictionary = GensimDictionary(non_domain_embed[0])
         return lambda collection: dictionary
     else:
-        return lambda collection: MonolingualDictionary(domain_embed[0].format(collection.name))
+        return lambda collection: GensimDictionary(domain_embed[0].format(collection.name))
 
 
 tf_fns = {

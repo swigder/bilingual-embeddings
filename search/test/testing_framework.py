@@ -8,7 +8,7 @@ import pandas as pd
 from numpy import average
 
 from baseline import CosineSimilaritySearchEngine
-from dictionary import MonolingualDictionary, SubwordDictionary, BilingualDictionary
+from dictionary import dictionary, BilingualDictionary
 from search_engine import EmbeddingSearchEngine, BilingualEmbeddingSearchEngine
 from .run_tests import query_result, f1_score, average_precision
 
@@ -16,12 +16,6 @@ EmbeddingsTest = namedtuple('EmbeddingsTest', ['f', 'non_embed', 'columns'])
 
 base_name_map = lambda ps: {os.path.splitext(os.path.basename(p))[0].replace('{}-', 'Coll+'): p for p in ps or []}
 df_value_gen = lambda parsed_args: lambda value: value if not parsed_args.column else value[parsed_args.column]
-
-
-def dictionary(embed_path, parsed_args, lang=None):
-    return SubwordDictionary(embed_path, language=lang) \
-        if parsed_args.subword \
-        else MonolingualDictionary(embed_path, language=lang)
 
 
 def multirun_map(test):
@@ -58,7 +52,7 @@ def hyperparameters(test):
             for globbed_path in paths:
                 embeds = glob.glob(globbed_path)
                 for embed_path in embeds:
-                    embed = dictionary(embed_path, parsed_args)
+                    embed = dictionary(embed_path, use_subword=parsed_args.subword)
                     star = globbed_path.index('*')
                     column = embed_path[star:star-len(globbed_path)+1]
                     df.loc[collection.name, column] = df_value(test.f(collection, embed))
@@ -112,7 +106,7 @@ def vary_embeddings(test):
         # embeddings are slow to load and take up a lot of memory. load them only once for all collections, and release
         # them quickly.
         for embed_name, path in non_domain_embed.items():
-            embed = dictionary(path, parsed_args)
+            embed = dictionary(path, use_subword=parsed_args.subword)
             for collection in collections:
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
 
@@ -120,7 +114,7 @@ def vary_embeddings(test):
             if baseline:
                 df.loc[collection.name, test.non_embed] = df_value(test.f(collection, None))
             for embed_name, path in domain_embed.items():
-                embed = dictionary(path.format(collection.name), parsed_args)
+                embed = dictionary(path.format(collection.name), use_subword=parsed_args.subword)
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
         return df
 
@@ -137,8 +131,8 @@ def bilingual(test):
             raise ValueError
         collection = collections[0]
 
-        doc_dict = dictionary(parsed_args.doc_embed, parsed_args, 'doc')
-        query_dict = dictionary(parsed_args.query_embed, parsed_args, 'query')
+        doc_dict = dictionary(parsed_args.doc_embed, language='doc', use_subword=parsed_args.subword)
+        query_dict = dictionary(parsed_args.query_embed, language='query', use_subword=parsed_args.subword)
         bilingual_dictionary = BilingualDictionary(src_dict=doc_dict, tgt_dict=query_dict, default_lang='doc')
 
         monolingual_search_engine = EmbeddingSearchEngine(dictionary=doc_dict)
