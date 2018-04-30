@@ -279,3 +279,14 @@ def display_chart(data, args):
     plt.ylabel(args.y_axis or args.column)
     plt.title(args.title)
     plt.show()
+
+
+def save_to_file(data, args):
+    save_file = args.save_file
+    if not save_file:
+        save_dir = os.path.join(os.getcwd(), 'output')
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        save_file = os.path.join(save_dir, datetime.datetime.now().isoformat() + ".pkl")
+    print('Saving to file', save_file)
+    data.to_pickle(save_file)

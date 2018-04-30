@@ -3,7 +3,7 @@ import argparse
 from .df_tests import vary_df, add_df_parser_options
 from .oov_tests import oov_test
 from .testing_framework import vary_embeddings, search_test, embed_to_engine, print_table, display_chart, bilingual, \
-    hyperparameters, multirun_map, recall_test
+    hyperparameters, multirun_map, recall_test, save_to_file
 from ir_data_reader import readers, read_collection
 
 
@@ -17,6 +17,7 @@ parent_parser.add_argument('-b', '--baseline', action='store_true')
 parent_parser.add_argument('-s', '--subword', action='store_true')
 parent_parser.add_argument('-q', '--query_id', type=str, nargs='*')
 parent_parser.add_argument('-m', '--multirun', action='store_true')
+parent_parser.add_argument('--save_file', type=str, default='')
 
 formatting_group = parent_parser.add_argument_group('formatting')
 formatting_group.add_argument('-fc', '--column', type=str, nargs='?', help='column to show')
@@ -75,3 +76,5 @@ if args.func:
         print_table(result, args)
     else:
         display_chart(result, args)
+
+    save_to_file(result, args)
