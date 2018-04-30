@@ -347,6 +347,18 @@ def write_to_standard_form(collection, parsed_args):
     write_to_file('relevance', collection.relevance, transform=lambda l: ' '.join(map(str, l)))
 
 
+def write_vocabulary(collection, parsed_args):
+    os.makedirs(os.path.join(parsed_args.out_dir, collection.name), exist_ok=True)
+
+    vocabulary = set()
+    texts = list(collection.documents.values()) + list(collection.queries.values())
+    for text in texts:
+        vocabulary |= set(tokenize(normalize(text)))
+
+    with open(os.path.join(parsed_args.out_dir, collection.name + '-vocabulary.txt'), 'w') as f:
+        f.write('\n'.join(vocabulary))
+
+
 if __name__ == "__main__":
     def split_calls(f):
         return lambda cs, a: [f(c, a) for c in cs]
@@ -370,11 +382,16 @@ if __name__ == "__main__":
     parser_fasttext.add_argument('-s', '--standard', action='store_true')
     parser_fasttext.set_defaults(func=split_calls(write_fasttext_training_file))
 
-    parser_fasttext = subparsers.add_parser('standardize', parents=[parent_parser])
-    parser_fasttext.add_argument('-p', '--phrases', action='store_true', help='Detect and join phrases.')
-    parser_fasttext.add_argument('out_dir', type=str, help='Output directory')
-    parser_fasttext.set_defaults(func=split_calls(write_to_standard_form))
-    parser_fasttext.set_defaults(standard=False)
+    parser_standardize = subparsers.add_parser('standardize', parents=[parent_parser])
+    parser_standardize.add_argument('-p', '--phrases', action='store_true', help='Detect and join phrases.')
+    parser_standardize.add_argument('out_dir', type=str, help='Output directory')
+    parser_standardize.set_defaults(func=split_calls(write_to_standard_form))
+    parser_standardize.set_defaults(standard=False)
+
+    parser_vocabulary = subparsers.add_parser('vocabulary', parents=[parent_parser])
+    parser_vocabulary.add_argument('out_dir', type=str, help='Output directory')
+    parser_vocabulary.set_defaults(func=split_calls(write_vocabulary))
+    parser_vocabulary.set_defaults(standard=True)
 
     args = parser.parse_args()
 
