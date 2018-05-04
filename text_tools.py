@@ -1,22 +1,12 @@
 """
 Normalize and tokenize the way fasttext does it - lowercase, convert digits to words, split on non-alpha.
 """
+import argparse
 from collections import defaultdict
 
 
 def normalize(string):
-    return (string.lower()
-                  # .replace('0', ' zero ')
-                  # .replace('1', ' one ')
-                  # .replace('2', ' two ')
-                  # .replace('3', ' three ')
-                  # .replace('4', ' four ')
-                  # .replace('5', ' five ')
-                  # .replace('6', ' six ')
-                  # .replace('7', ' seven ')
-                  # .replace('8', ' eight ')
-                  # .replace('9', ' nine ')
-            )
+    return string.lower()
 
 
 def tokenize(string):
@@ -35,6 +25,7 @@ def tokenize(string):
                              .replace(']', ' ] ')
                              .replace("'", " ' ")
                              .replace('"', ' " ')
+                             .replace('”', ' ” ')
                              .split())
                 )
 
@@ -72,4 +63,19 @@ def replace_phrases(lines, phrases):
             line = line.replace(original, phrase)
         out_lines += line
     return out_lines
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Text tool.')
+
+    parser.add_argument('input', type=str, help='input file')
+    parser.add_argument('output', type=str, help='output file')
+
+    args = parser.parse_args()
+
+    with open(args.input, 'r') as input:
+        with open(args.output, 'w') as output:
+            for line in input:
+                output.write(' '.join(tokenize(normalize(line))) + '\n')
+
 

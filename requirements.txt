@@ -1,3 +1,4 @@
+requests
 seaborn
 matplotlib
 pandas
