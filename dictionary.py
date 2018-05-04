@@ -24,7 +24,7 @@ class Dictionary:
 
 
 class MonolingualDictionary(Dictionary):
-    def __init__(self, emb_file, language, normalize=True):
+    def __init__(self, emb_file, language, normalize=False):
         self.language = language if language is not None else os.path.basename(emb_file).split('.')[0]
         self.normalize = normalize
 
@@ -35,7 +35,7 @@ class FasttextDictionary(MonolingualDictionary):
     backed dictionary
     """
 
-    def __init__(self, emb_file, language=None, use_subword=True, normalize=True):
+    def __init__(self, emb_file, language=None, use_subword=True, normalize=False):
         super().__init__(emb_file=emb_file, language=language, normalize=normalize)
         self.emb = fastText.load_model(path=emb_file)
         self.vector_dimensionality = self.emb.get_dimension()
@@ -59,7 +59,7 @@ class FasttextDictionary(MonolingualDictionary):
 
 
 class GensimDictionary(MonolingualDictionary):
-    def __init__(self, emb_file, language=None, normalize=True):
+    def __init__(self, emb_file, language=None, normalize=False):
         super().__init__(emb_file=emb_file, language=language, normalize=normalize)
         try:
             self.emb_file = emb_file
