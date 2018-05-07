@@ -93,6 +93,12 @@ if __name__ == '__main__':
     wiki_url = 'https://{}.wikipedia.org/w/api.php'.format(args.lang)
     category_prefix = {'en': 'Category', 'sv': 'Kategori'}[args.lang] + ':'
 
+    args.dir = os.path.join(args.dir, '{}-{}-{}'.format(args.lang,
+                                                        args.category or os.path.split(args.pages)[1],
+                                                        args.depth or 'continue'))
+    print(datetime.datetime.now(), 'Will save to {}.'.format(args.dir))
+    os.mkdir(args.dir)  # deliberately fail if exists
+
     print(datetime.datetime.now(), 'Getting categories and pages...')
 
     if not args.pages:
@@ -105,10 +111,10 @@ if __name__ == '__main__':
         with open(os.path.join(args.dir, 'pages.txt'), 'w') as f:
             f.write('\n'.join(pages))
     else:
-        pages = set()
+        pages = []
         with open(os.path.join(args.pages), 'r') as f:
             for line in f:
-                pages.add(line.strip())
+                pages.append(line.strip())
         print(datetime.datetime.now(), 'Found', len(pages), 'pages.')
 
     processed_pages = set()
