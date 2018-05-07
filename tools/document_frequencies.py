@@ -127,8 +127,7 @@ def read_dfs(file_name):
         num_docs, vocab_size = map(int, file.readline().strip().split())
         for line in file:
             token, count = line.strip().split()
-            count = int(count)
-            dfs[token] = count
+            dfs[token] = int(count)
     assert vocab_size == len(dfs)
     return dfs, num_docs
 

@@ -4,8 +4,8 @@ from math import log
 import numpy as np
 from annoy import AnnoyIndex
 
-from document_frequencies import read_dfs
 from text_tools import normalize, tokenize
+from utils import read_dfs
 
 
 class SearchEngine:
