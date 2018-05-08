@@ -37,7 +37,7 @@ class Queue:
         return len(self.to_process) == 0 or (self.max_depth and self.depth > self.max_depth)
 
 
-def get_categories(super_category, paging=None):
+def get_categories(super_category, wiki_url, paging=None):
     params = {'action': 'query', 'list': 'categorymembers',
               'cmtitle': super_category,
               'format': 'json', 'cmlimit': 50}
@@ -48,16 +48,16 @@ def get_categories(super_category, paging=None):
     titles = [item['title'] for item in response_json['query']['categorymembers']]
 
     if 'continue' in response_json and 'cmcontinue' in response_json['continue']:
-        titles += get_categories(super_category, paging=response_json['continue']['cmcontinue'])
+        titles += get_categories(super_category, wiki_url=wiki_url, paging=response_json['continue']['cmcontinue'])
 
     return titles
 
 
-def get_categories_recursive(super_category, max_depth=1):
+def get_categories_recursive(super_category, wiki_url, category_prefix, max_depth=1):
     page_titles = set()
     queue = Queue(first_item=super_category, max_depth=max_depth)
     while not queue.empty():
-        titles = get_categories(queue.pop())
+        titles = get_categories(queue.pop(), wiki_url=wiki_url)
         for title in titles:
             if title.startswith(category_prefix):
                 queue.add(title)
@@ -66,7 +66,7 @@ def get_categories_recursive(super_category, max_depth=1):
     return page_titles, queue.processed
 
 
-def get_plain_text(page):
+def get_plain_text(page, wiki_url):
     params = {'action': 'query', 'prop': 'extracts', 'explaintext': '',
               'titles': page, 'format': 'json'}
 
@@ -91,7 +91,8 @@ def download_wikipedia(args):
     print(datetime.datetime.now(), 'Getting categories and pages...')
 
     if not args.pages:
-        pages, categories = get_categories_recursive(category_prefix + args.category, max_depth=4)
+        pages, categories = get_categories_recursive(category_prefix + args.category,
+                                                     wiki_url=wiki_url, category_prefix=category_prefix, max_depth=4)
         print(datetime.datetime.now(), 'Found', len(categories), 'categories and', len(pages), 'pages.')
 
         print(datetime.datetime.now(), 'Writing categories and pages to file...')
@@ -121,7 +122,7 @@ def download_wikipedia(args):
                 print(datetime.datetime.now(), 'Getting page', i, page, '...')
             if page in processed_pages:
                 continue
-            f.write(page + '\n' + get_plain_text(page) + '\n\n')
+            f.write(page + '\n' + get_plain_text(page, wiki_url=wiki_url) + '\n\n')
 
 
 def merge(args):
