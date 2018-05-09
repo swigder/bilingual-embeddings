@@ -126,10 +126,10 @@ def download_wikipedia(args):
 
 
 def merge(args):
-    all_pages = []
+    to_pages = []
     with open(os.path.join(args.to_dir, 'pages.txt'), 'r') as f:
         for line in f:
-            all_pages.append(line.strip())
+            to_pages.append(line.strip())
 
     processed_pages = []
     with open(os.path.join(args.to_dir, 'contents.txt'), 'r') as f:
@@ -140,13 +140,19 @@ def merge(args):
                 processed_pages.append(line)
             previous_is_blank = not bool(line)
 
-    with open(os.path.join(args.to_dir, 'contents.txt'), 'a') as to_file:
+    to_file = os.path.join(args.to_dir, 'contents.txt')
+    if args.new_file:
+        import shutil
+        to_file = args.new_file if os.path.isabs(args.new_file) else os.path.join(args.to_dir, args.new_file)
+        shutil.copy(os.path.join(args.to_dir, 'contents.txt'), to_file)
+
+    with open(to_file, 'a') as to_file:
         with open(os.path.join(args.from_dir, 'contents.txt'), 'r') as from_file:
             previous_is_blank = True
             add_current_line = False
             for line in from_file:
                 line = line.strip()
-                if previous_is_blank and line in all_pages and line not in processed_pages:
+                if previous_is_blank and line not in processed_pages and (args.all or line in to_pages):
                     to_file.write(line + '\n')
                     add_current_line = True
                 elif add_current_line:
@@ -174,6 +180,8 @@ if __name__ == '__main__':
     parser_merge = subparsers.add_parser('merge')
     parser_merge.add_argument('to_dir', type=str, help='directory to merge into')
     parser_merge.add_argument('from_dir', type=str, help='directory to merge from')
+    parser_merge.add_argument('-n', '--new_file', type=str, default='', help='new file for merged items')
+    parser_merge.add_argument('-a', '--all', action='store_true')
     parser_merge.set_defaults(func=merge)
 
     args = parser.parse_args()
