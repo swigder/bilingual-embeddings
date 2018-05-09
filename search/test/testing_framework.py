@@ -7,7 +7,7 @@ import pandas as pd
 from numpy import average
 
 from baseline import CosineSimilaritySearchEngine
-from dictionary import dictionary, BilingualDictionary
+from dictionary import dictionary
 from search_engine import EmbeddingSearchEngine, BilingualEmbeddingSearchEngine
 from .run_tests import query_result, f1_score, average_precision
 
@@ -125,48 +125,6 @@ def split_collections(f):
     return lambda cs, a: (f(c, a) for c in cs)
 
 
-def bilingual(test):
-    def inner(collections, parsed_args):
-        if len(collections) != 1:
-            raise ValueError
-        collection = collections[0]
-
-        doc_dict = dictionary(parsed_args.doc_embed, language='doc',
-                              use_subword=parsed_args.subword, normalize=parsed_args.normalize)
-        query_dict = dictionary(parsed_args.query_embed, language='query',
-                                use_subword=parsed_args.subword, normalize=parsed_args.normalize)
-        bilingual_dictionary = BilingualDictionary(src_dict=doc_dict, tgt_dict=query_dict, default_lang='doc')
-
-        monolingual_search_engine = EmbeddingSearchEngine(dictionary=doc_dict)
-        bilingual_search_engine = BilingualEmbeddingSearchEngine(dictionary=bilingual_dictionary,
-                                                                 doc_lang='doc', query_lang='query')
-        monolingual_search_engine.index_documents(collection.documents.values())
-        bilingual_search_engine.index_documents(collection.documents.values())
-
-        doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
-
-        total_average_precision_original = 0
-        total_average_precision_translated = 0
-
-        for i, query in collection.queries_translated.items():
-            expected = collection.relevance[i]
-            total_average_precision_original += query_result(monolingual_search_engine, i, collection.queries[i],
-                                                             expected, doc_ids, 10,
-                                                             verbose=True,
-                                                             metric=average_precision)
-            total_average_precision_translated += query_result(bilingual_search_engine, i, query,
-                                                               expected, doc_ids, 10,
-                                                               verbose=True,
-                                                               metric=average_precision)
-
-        count = len(collection.queries_translated)
-
-        print('\n-- Totals:')
-        print('-- MAP original: {:.4f}, MAP translated: {:.4f}'.format(total_average_precision_original / count,
-                                                                       total_average_precision_translated / count))
-    return inner
-
-
 '''
 Search test - precision / recall.
 '''
@@ -189,7 +147,9 @@ def search_test_pr(collection, search_engine):
 def search_test_map(collection, search_engine):
     total_average_precision = 0
     doc_ids = {doc_text: doc_id for doc_id, doc_text in collection.documents.items()}
-    for i, query in collection.queries.items():
+    queries = collection.queries.items() if type(search_engine) is not BilingualEmbeddingSearchEngine \
+        else collection.queries_translated.items()
+    for i, query in queries:
         expected = collection.relevance[i]
         total_average_precision += query_result(search_engine, i, query, expected, doc_ids, 10,
                                                 verbose=False,
