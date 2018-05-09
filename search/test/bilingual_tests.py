@@ -12,9 +12,19 @@ def bilingual(test):
             raise ValueError
         collection = collections[0]
 
-        df = pd.DataFrame(columns=test.columns, index=map(os.path.basename, parsed_args.embed_locations))
+        embed_locations = parsed_args.embed_locations
+        if parsed_args.search:
+            from glob import glob
+            embed_locations = []
+            for embed_location in parsed_args.embed_locations:
+                glob_format = '{}/**/{}'.format(embed_location, parsed_args.doc_embed)
+                embed_locations += list(map(os.path.dirname, glob(glob_format, recursive=True)))
 
-        for embed_location in parsed_args.embed_locations:
+        df = pd.DataFrame(columns=test.columns, index=map(os.path.basename, embed_locations))
+
+        for embed_location in embed_locations:
+            print('Testing {}...'.format(embed_location))
+
             doc_dict = dictionary(os.path.join(embed_location, parsed_args.doc_embed), language='doc',
                                   use_subword=parsed_args.subword, normalize=parsed_args.normalize)
             query_dict = dictionary(os.path.join(embed_location, parsed_args.query_embed), language='query',
