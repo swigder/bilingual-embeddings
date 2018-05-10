@@ -154,7 +154,7 @@ def search_test_map(collection, search_engine):
         total_average_precision += query_result(search_engine, i, query, expected, doc_ids, 10,
                                                 verbose=False,
                                                 metric=average_precision)
-    return total_average_precision / len(collection.queries)
+    return total_average_precision / len(queries)
 
 
 search_test = EmbeddingsTest(f=search_test_map, columns=['MAP@10'], non_embed='baseline')
