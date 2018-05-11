@@ -92,7 +92,8 @@ def download_wikipedia(args):
 
     if not args.pages:
         pages, categories = get_categories_recursive(category_prefix + args.category,
-                                                     wiki_url=wiki_url, category_prefix=category_prefix, max_depth=4)
+                                                     wiki_url=wiki_url, category_prefix=category_prefix,
+                                                     max_depth=args.depth)
         print(datetime.datetime.now(), 'Found', len(categories), 'categories and', len(pages), 'pages.')
 
         print(datetime.datetime.now(), 'Writing categories and pages to file...')
