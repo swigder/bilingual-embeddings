@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 
 
@@ -30,13 +32,22 @@ def map_files_to_df_components(file_string):
         parts = file.split('/')
         mapping[parts[-2]] = parts[-4]
 
-    df = pd.DataFrame(index=mapping.keys(), columns=['sub', 'win', 'epoch', 'min'])
+    df = pd.DataFrame(index=mapping.keys(), columns=['corpus', 'sub', 'win', 'epoch', 'min'])
     for k, v in mapping.items():
         split = v.split('-')
-        d = {}
+        d = {'corpus': '-'.join(split[:3])}
         for i, name in enumerate(split):
             if name in df.columns:
                 d[name] = split[i + 1]
         df.loc[k] = d
 
     return df
+
+
+def unpickle_multiple(prefix, files):
+    return pd.concat([pd.read_pickle(os.path.join(prefix, file)) for file in files])
+
+
+def get_results(file_string, prefix, files):
+    r = pd.concat([map_files_to_df_components(file_string), unpickle_multiple(prefix, files)], axis=1)
+    return r.apply(pd.to_numeric, errors='ignore')
