@@ -3,7 +3,7 @@ import os
 
 from collections import namedtuple, OrderedDict
 
-from text_tools import tokenize, normalize, detect_phrases, replace_phrases
+from tools.text_tools import tokenize, normalize, detect_phrases, replace_phrases
 
 IrCollection = namedtuple('IrCollection', ['name', 'documents', 'queries', 'relevance'])
 BilingualIrCollection = namedtuple('BilingualIrCollection', IrCollection._fields + ('queries_translated',))

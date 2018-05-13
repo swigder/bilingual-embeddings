@@ -1,5 +1,5 @@
 from .testing_framework import EmbeddingsTest
-from text_tools import tokenize, normalize
+from tools.text_tools import tokenize, normalize
 
 
 '''

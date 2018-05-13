@@ -4,7 +4,7 @@ from math import log
 import numpy as np
 from annoy import AnnoyIndex
 
-from text_tools import normalize, tokenize
+from tools.text_tools import normalize, tokenize
 from utils import read_dfs
 
 

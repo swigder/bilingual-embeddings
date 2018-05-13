@@ -5,7 +5,7 @@ import time
 
 from collections import defaultdict
 
-from text_tools import normalize, tokenize
+from .text_tools import normalize, tokenize
 
 
 start = time.time()
@@ -37,7 +37,8 @@ def compute_dfs(in_file_path, out_file_path, min_count=0, max_docs=-1, save_rate
     with open(in_file_path, 'r') as in_file:
         current_article = ''
         for line in in_file:
-            if line[0] == '=' and line[1] != '=':  # new article
+            # if line[0] == '=' and line[1] != '=':  # new article
+            if not line.strip():
                 total_docs += 1
                 if 0 < start_offset < total_docs:
                     continue
@@ -52,7 +53,8 @@ def compute_dfs(in_file_path, out_file_path, min_count=0, max_docs=-1, save_rate
                     break
                 process_article(current_article, dfs)
                 current_article = ''
-            current_article += line.strip() + ' '
+            else:
+                current_article += line.strip() + ' '
         process_article(current_article, dfs)
 
     write_to_file(out_file_path, dfs, num_docs=total_docs-offset, merge=True)
