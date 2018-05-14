@@ -6,8 +6,11 @@ import pandas as pd
 def load_and_combine(path):
     df = pd.read_pickle(path)
     df = df.astype(float).groupby(df.index).mean()
-    cols = list(map(str, sorted(map(int, df.columns.tolist()))))
-    df = df[cols]
+    try:
+        cols = list(map(str, sorted(map(int, df.columns.tolist()))))
+        df = df[cols]
+    except ValueError:
+        pass
     return df
 
 
