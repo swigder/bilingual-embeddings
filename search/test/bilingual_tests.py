@@ -32,7 +32,8 @@ def bilingual(test):
             bilingual_dictionary = BilingualDictionary(src_dict=doc_dict, tgt_dict=query_dict, default_lang='doc')
 
             bilingual_search_engine = BilingualEmbeddingSearchEngine(dictionary=bilingual_dictionary,
-                                                                     doc_lang='doc', query_lang='query')
+                                                                     doc_lang='doc', query_lang='query',
+                                                                     query_df_file=parsed_args.df_file)
             bilingual_search_engine.index_documents(collection.documents.values())
 
             df.loc[os.path.basename(embed_location)] = test.f(collection, bilingual_search_engine)
