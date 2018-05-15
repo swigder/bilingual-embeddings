@@ -94,22 +94,21 @@ class EmbeddingSearchEngine(SearchEngine):
 
 
 class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
-    def __init__(self, dictionary, doc_lang, query_lang, query_df_file=None):
+    def __init__(self, dictionary, doc_lang, query_lang, query_df_file=None, use_weights=False):
         super().__init__(dictionary=dictionary)
         self.doc_lang = doc_lang
         self.query_lang = query_lang
+        self.use_weights = use_weights
         if query_df_file:
-            print('DF')
             dfs, num_docs = read_dfs(query_df_file)
-            df_cutoff = int(.8 * num_docs)
+            df_cutoff = int(.2 * num_docs)
             df_to_weight = lambda df, num_docs: log(num_docs / df, 10)
+            print(df_to_weight(df_cutoff, num_docs))
             default_df_fn = lambda dfs: np.average(list(dfs))
             self.query_stopwords = set([token for token, df in dfs.items() if df >= df_cutoff])
             self.query_word_weights = {token: df_to_weight(df, num_docs) for token, df in dfs.items()}
-            self.query_word_weights['å'] = 0
             self.query_default_word_weight = default_df_fn(list(self.word_weights.values()))
         else:
-            print('No DF')
             self.query_word_weights = {}
             self.query_default_word_weight = 1
 
@@ -118,17 +117,16 @@ class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
             # return np.sum(self.dictionary.word_vectors(tokens=tokens, lang=self.doc_lang), axis=0)
             return EmbeddingSearchEngine._vectorize(self, tokens, indexing)
         else:  # query language, df not available
-            vector = np.sum(self._weighted_query_vector(tokens=tokens), axis=0)
+            vector = self._weighted_query_vector(tokens)
             oov_tokens = [token for token in tokens if token not in self.dictionary.dictionaries[self.query_lang]]
             print('OOV', oov_tokens)
-            vector += self.query_default_word_weight * np.sum(self.dictionary.word_vectors(tokens=oov_tokens, lang=self.doc_lang), axis=0)
+            vector += np.sum(self.dictionary.word_vectors(tokens=oov_tokens, lang=self.doc_lang), axis=0)
             return vector
 
     def _weighted_query_vector(self, tokens):
-        if tokens[0].isnumeric():
-            tokens = tokens[2:]
         vectors = self.dictionary.word_vectors(tokens=tokens, lang=self.query_lang)
         weights = [self.query_word_weights.get(word, self.query_default_word_weight) for word in tokens]
-        print('yo', weights, len(tokens), len(vectors), len(weights))
         print('Weights:', ['{} {}'.format(token, weight) for token, weight in zip(tokens, weights)])
-        return [w * v for v, w in zip(vectors, weights)]
+        weighted_vectors = [((w if self.use_weights else 1) if t not in self.stopwords else 0) * v for v, t, w in zip(vectors, tokens, weights)]
+        print(np.linalg.norm(np.sum(weighted_vectors, axis=0)), np.sum(weighted_vectors, axis=0).shape)
+        return np.sum(weighted_vectors, axis=0)

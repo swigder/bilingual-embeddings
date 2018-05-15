@@ -64,6 +64,7 @@ bilingual_parser.add_argument('-le', '--embed_locations', type=str, nargs='+', h
 bilingual_parser.add_argument('-de', '--doc_embed', type=str, help='Document-language embedding file')
 bilingual_parser.add_argument('-qe', '--query_embed', type=str, help='Query-language embedding file')
 bilingual_parser.add_argument('-df', '--df_file', type=str, help='File for query-language df')
+bilingual_parser.add_argument('-uw', '--use_weights', action='store_true', help='Use df weights (not just stopwords)')
 bilingual_parser.add_argument('--search', action='store_true', help='Search for subdirectories containing embeddings')
 bilingual_parser.set_defaults(func=bilingual(search_test))
 
