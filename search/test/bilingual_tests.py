@@ -22,8 +22,8 @@ def bilingual(test):
 
         df = pd.DataFrame(columns=test.columns, index=map(os.path.basename, embed_locations))
 
-        for embed_location in embed_locations:
-            print('Testing {}...'.format(embed_location))
+        for i, embed_location in enumerate(embed_locations):
+            print('Testing ({}/{}) {}...'.format(i, len(embed_locations), embed_location))
 
             doc_dict = dictionary(os.path.join(embed_location, parsed_args.doc_embed), language='doc',
                                   use_subword=parsed_args.subword, normalize=parsed_args.normalize)

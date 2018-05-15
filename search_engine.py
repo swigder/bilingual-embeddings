@@ -103,7 +103,6 @@ class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
             dfs, num_docs = read_dfs(query_df_file)
             df_cutoff = int(.2 * num_docs)
             df_to_weight = lambda df, num_docs: log(num_docs / df, 10)
-            print(df_to_weight(df_cutoff, num_docs))
             default_df_fn = lambda dfs: np.average(list(dfs))
             self.query_stopwords = set([token for token, df in dfs.items() if df >= df_cutoff])
             self.query_word_weights = {token: df_to_weight(df, num_docs) for token, df in dfs.items()}
@@ -127,6 +126,6 @@ class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
         vectors = self.dictionary.word_vectors(tokens=tokens, lang=self.query_lang)
         weights = [self.query_word_weights.get(word, self.query_default_word_weight) for word in tokens]
         print('Weights:', ['{} {}'.format(token, weight) for token, weight in zip(tokens, weights)])
-        weighted_vectors = [((w if self.use_weights else 1) if t not in self.stopwords else 0) * v for v, t, w in zip(vectors, tokens, weights)]
-        print(np.linalg.norm(np.sum(weighted_vectors, axis=0)), np.sum(weighted_vectors, axis=0).shape)
+        weighted_vectors = [((w if self.use_weights else 1) if t not in self.stopwords else 0) * v
+                            for v, t, w in zip(vectors, tokens, weights)]
         return np.sum(weighted_vectors, axis=0)
