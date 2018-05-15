@@ -98,11 +98,11 @@ class IrDataReader:
 
 
 class StandardReader(IrDataReader):
-    def __init__(self, name, data_dir):
+    def __init__(self, name, data_dir, untranslated=False):
         f = lambda t: os.path.join(data_dir, '{}-{}.txt'.format(name, t))
         super().__init__(name=name,
                          doc_file=f('documents'),
-                         query_file=f('queries'),
+                         query_file=f('queries' if not untranslated else 'queries_untranslated'),
                          relevance_file=f('relevance'),
                          translated_query_file=f('queries_translated'))
         self.extract_doc_id = self.extract_id
@@ -288,9 +288,9 @@ def print_description(items, description):
     print(keys[1], ':', items[keys[1]][:300])
 
 
-def read_collection(base_dir, collection_name, standard=True):
+def read_collection(base_dir, collection_name, standard=True, untranslated=False):
     path = os.path.join(base_dir, collection_name)
-    reader = StandardReader(name=collection_name, data_dir=path) \
+    reader = StandardReader(name=collection_name, data_dir=path, untranslated=untranslated) \
         if standard \
         else readers[collection_name](name=collection_name, data_dir=path)
     return reader.read_documents_queries_relevance()

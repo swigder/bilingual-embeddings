@@ -14,6 +14,7 @@ subparsers = parser.add_subparsers(title='subcommands')
 parent_parser = argparse.ArgumentParser(add_help=False)
 parent_parser.add_argument('ir_dir', type=str, help='Directory with IR files')
 parent_parser.add_argument('-c', '--collections', choices=list(readers.keys()) + ['all'], nargs='*', default='all')
+parent_parser.add_argument('-u', '--untranslated', action='store_true')
 parent_parser.add_argument('-b', '--baseline', action='store_true')
 parent_parser.add_argument('-s', '--subword', action='store_true')
 parent_parser.add_argument('-n', '--normalize', dest='normalize', action='store_true')
@@ -72,7 +73,7 @@ args = parser.parse_args()
 if args.collections == 'all':
     args.collections = list(readers.keys())
 
-collections = [read_collection(base_dir=args.ir_dir, collection_name=name) for name in args.collections]
+collections = [read_collection(base_dir=args.ir_dir, collection_name=name, untranslated=args.untranslated) for name in args.collections]
 
 if args.func:
     result = multirun_map(args.func)(collections, args)
