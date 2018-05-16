@@ -91,10 +91,14 @@ def vary_embeddings(test):
             for collection in collections:
                 if not os.path.exists(path.format(collection.name)):
                     raise FileNotFoundError(path.format(collection.name))
-        if len(collections) == 0 and len(domain_embed.values()) == 1:
+        if len(collections) == 1 and len(domain_embed.values()) == 1:
             only_path = list(domain_embed.values())[0]
             if os.path.isdir(only_path):
-                domain_embed = glob.glob(os.path.join(only_path, '{}*.bin'.format(collections[0].name)))
+                paths = glob.glob(os.path.join(only_path, '{}*.bin'.format(collections[0].name)))
+                if len(paths) == 0:
+                    paths = glob.glob(os.path.join(only_path, '{}*.vec'.format(collections[0].name)))
+                domain_embed = {path: path for path in paths}
+                print('Found', len(domain_embed), 'embeddings to test.')
 
         baseline = test.non_embed and parsed_args.baseline
         embed_names = [test.non_embed] if baseline else [] + list(non_domain_embed.keys()) + list(domain_embed.keys())
@@ -113,12 +117,14 @@ def vary_embeddings(test):
             for collection in collections:
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
 
-        for collection in collections:
+        total = len(collections) * len(domain_embed.items())
+        for i, collection in enumerate(collections):
             if baseline:
                 df.loc[collection.name, test.non_embed] = df_value(test.f(collection, None))
-            for embed_name, path in domain_embed.items():
+            for j, (embed_name, path) in enumerate(domain_embed.items()):
                 embed = dictionary(path.format(collection.name),
                                    use_subword=parsed_args.subword, normalize=parsed_args.normalize)
+                print('Testing ({}/{}) {}'.format(i*j+j+1, total, embed_name))
                 df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
         return df
 
