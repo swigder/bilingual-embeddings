@@ -91,6 +91,10 @@ def vary_embeddings(test):
             for collection in collections:
                 if not os.path.exists(path.format(collection.name)):
                     raise FileNotFoundError(path.format(collection.name))
+        if len(collections) == 0 and len(domain_embed.values()) == 1:
+            only_path = list(domain_embed.values())[0]
+            if os.path.isdir(only_path):
+                domain_embed = glob.glob(os.path.join(only_path, '{}*.bin'.format(collections[0].name)))
 
         baseline = test.non_embed and parsed_args.baseline
         embed_names = [test.non_embed] if baseline else [] + list(non_domain_embed.keys()) + list(domain_embed.keys())
