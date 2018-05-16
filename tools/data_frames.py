@@ -108,7 +108,10 @@ def analyze(df):
             fig, axes = plt.subplots(nrows=2, ncols=2)
             others = [a for a in attributes_to_test if a != attribute]
             for i, other in enumerate(others):
-                two_2_map(collection_df, attribute, other).plot(ax=axes[i//2, i%2])
+                grid = two_2_map(collection_df, attribute, other)
+                grid.plot(ax=axes[i // 2, i % 2])
+            values = grid.index.tolist()
+            plt.setp(axes, xticks=values if all(type(x) is int for x in values) else range(len(values)),
+                     xticklabels=values)
             plt.suptitle('{} {}'.format(collection, attribute))
-            plt.subplots_adjust(top=.9)
             plt.show()
