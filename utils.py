@@ -1,4 +1,16 @@
+import time
 from collections import defaultdict
+
+
+start = None
+
+
+def print_with_time(string, restart=False):
+    global start
+    if not start or restart:
+        start = time.time()
+    elapsed = time.time() - start
+    print('{} (+{:.2f}s) {}'.format(time.strftime('%a %H:%M:%S'), elapsed, string))
 
 
 def read_dfs(file_name):
