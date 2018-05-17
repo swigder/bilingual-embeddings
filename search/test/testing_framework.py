@@ -15,7 +15,6 @@ from .run_tests import query_result, f1_score, average_precision
 EmbeddingsTest = namedtuple('EmbeddingsTest', ['f', 'non_embed', 'columns'])
 
 base_name_map = lambda ps: {os.path.splitext(os.path.basename(p))[0].replace('{}-', 'Coll+'): p for p in ps or []}
-df_value_gen = lambda parsed_args: lambda value: value if not parsed_args.column else value[parsed_args.column]
 
 
 def multirun_map(test):
@@ -43,7 +42,6 @@ def multirun_map(test):
 def hyperparameters(test):
     def inner(collections, parsed_args):
         df = pd.DataFrame(index=[c.name for c in collections], columns=[])
-        df_value = df_value_gen(parsed_args)
 
         for collection in collections:
             paths = list(parsed_args.embed)
@@ -55,7 +53,7 @@ def hyperparameters(test):
                     embed = dictionary(embed_path, use_subword=parsed_args.subword, normalize=parsed_args.normalize)
                     star = globbed_path.index('*')
                     column = embed_path[star:star-len(globbed_path)+1]
-                    df.loc[collection.name, column] = df_value(test.f(collection, embed))
+                    df.loc[collection.name, column] = test.f(collection, embed)
             if parsed_args.relative:
                 baseline = df.loc[collection.name, parsed_args.relative]
                 df.loc[collection.name] = ((df.loc[collection.name] / baseline) - 1) * 100
@@ -76,10 +74,23 @@ def embed_to_engine(test):
     return EmbeddingsTest(f=inner, non_embed=test.non_embed, columns=test.columns)
 
 
+def dictionaries(path, parsed_args):
+    if parsed_args.all_dictionary_options:
+        base_dict = dictionary(path, use_subword=False, normalize=False)
+        dicts = [copy.copy(base_dict), copy.copy(base_dict), copy.copy(base_dict)]
+        dicts[1].use_subword = True
+        dicts[2].normalize = True
+        options = [{'subword': False, 'norm': False},
+                   {'subword': True, 'norm': False},
+                   {'subword': False, 'norm': True}]
+    else:
+        dicts = [dictionary(path, use_subword=parsed_args.subword, normalize=parsed_args.normalize)]
+        options = [{'subword': parsed_args.subword, 'norm': parsed_args.normalize}]
+    return zip(dicts, options)
+
+
 def vary_embeddings(test):
     def inner(collections, parsed_args):
-        df_value = df_value_gen(parsed_args)
-
         # use base name as prettier format, None -> []
         non_domain_embed = base_name_map(parsed_args.embed)
         domain_embed = base_name_map(parsed_args.domain_embed)
@@ -102,32 +113,29 @@ def vary_embeddings(test):
                 print_with_time('Found {} embeddings to test.'.format(len(domain_embed)))
 
         baseline = test.non_embed and parsed_args.baseline
-        embed_names = [test.non_embed] if baseline else [] + list(non_domain_embed.keys()) + list(domain_embed.keys())
-        if parsed_args.column:
-            index = [c.name for c in collections]
-            columns = embed_names
-        else:
-            index = pd.MultiIndex.from_product([(c.name for c in collections), embed_names])
-            columns = test.columns
-        df = pd.DataFrame(index=index, columns=columns)
+        rows = []
 
         # embeddings are slow to load and take up a lot of memory. load them only once for all collections, and release
         # them quickly.
         for embed_name, path in non_domain_embed.items():
-            embed = dictionary(path, use_subword=parsed_args.subword, normalize=parsed_args.normalize)
-            for collection in collections:
-                df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
+            for embed, options in dictionaries(path, parsed_args):
+                for collection in collections:
+                    rows.append({**{'collection': collection.name, 'embedding': embed_name},
+                                 **options,
+                                 **{test.columns[0]: test.f(collection, embed)}})
 
         total = len(collections) * len(domain_embed.items())
         for i, collection in enumerate(collections):
             if baseline:
-                df.loc[collection.name, test.non_embed] = df_value(test.f(collection, None))
+                rows.append({**{'collection': collection.name, 'embedding': test.non_embed},
+                             **{test.columns[0]: test.f(collection, None)}})
             for j, (embed_name, path) in enumerate(domain_embed.items()):
-                embed = dictionary(path.format(collection.name),
-                                   use_subword=parsed_args.subword, normalize=parsed_args.normalize)
-                print_with_time('Testing ({}/{}) {}'.format(i*j+j+1, total, embed_name))
-                df.loc[collection.name, embed_name] = df_value(test.f(collection, embed))
-        return df
+                for embed, options in dictionaries(path.format(collection.name), parsed_args):
+                    print_with_time('Testing ({}/{}) {}'.format(i*j+j+1, total, embed_name))
+                    rows.append({**{'collection': collection.name, 'embedding': embed_name},
+                                 **options,
+                                 **{test.columns[0]: test.f(collection, embed)}})
+        return pd.DataFrame(rows)
 
     return inner
 
