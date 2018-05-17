@@ -64,7 +64,7 @@ def read_grid_pickle(path):
     results.index = results.index.droplevel()
 
     files_name = file_name_only(path)
-    _, collection, norm, subword = files_name.split('_')[0].split('-')
+    _, collection, _, norm, subword = files_name.split('_')[0].split('-')
     assert norm == 'nn' or norm == 'norm'
     assert subword == 'subword' or subword == 'zero'
     hyperparams = pd.DataFrame(index=results.index,
@@ -105,7 +105,7 @@ def analyze(df):
     for collection in collection_groups.groups:
         collection_df = collection_groups.get_group(collection)
         for attribute in attributes_to_test:
-            fig, axes = plt.subplots(nrows=2, ncols=2)
+            fig, axes = plt.subplots(nrows=2, ncols=2, sharey=True)
             others = [a for a in attributes_to_test if a != attribute]
             for i, other in enumerate(others):
                 grid = two_2_map(collection_df, attribute, other)
