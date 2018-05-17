@@ -61,24 +61,33 @@ def read_all_pickles_in_dir(path):
 
 def read_grid_pickle(path):
     results = pd.read_pickle(path)
-    results.index = results.index.droplevel()
 
     files_name = file_name_only(path)
     _, collection, _, norm, subword = files_name.split('_')[0].split('-')
-    assert norm == 'nn' or norm == 'norm'
-    assert subword == 'subword' or subword == 'zero'
-    hyperparams = pd.DataFrame(index=results.index,
-                               columns=['collection', 'sub', 'win', 'epochs', 'norm', 'subword'])
+
+    contains_all = norm == 'all' and subword == 'all'
+    if not contains_all:
+        results.index = results.index.droplevel()
+        assert norm == 'nn' or norm == 'norm'
+        assert subword == 'subword' or subword == 'zero'
+    columns = ['sub', 'win', 'epochs']
+    if not contains_all:
+        columns += ['collection', 'norm', 'subword']
+    hyperparams = pd.DataFrame(index=results.index, columns=columns)
     for result in hyperparams.index:
-        parts = file_name_only(result).split('-')
+        file_name = result if not contains_all else results.at[result, 'embedding']
+        parts = file_name_only(file_name).split('-')
         assert parts[0] == collection
-        d = {'collection': collection, 'norm': norm, 'subword': subword}
+        d = {'collection': collection, 'norm': norm, 'subword': subword} if not contains_all else {}
         for i, name in enumerate(parts):
             if name in hyperparams.columns:
                 d[name] = parts[i + 1]
         hyperparams.loc[result] = d
 
-    return pd.concat([results, hyperparams], axis=1).apply(pd.to_numeric, errors='ignore')
+    results = pd.concat([results, hyperparams], axis=1)
+    if contains_all:
+        results = results.set_index('embedding')
+    return results.apply(pd.to_numeric, errors='ignore')
 
 
 def unpickle_multiple(prefix, files):
