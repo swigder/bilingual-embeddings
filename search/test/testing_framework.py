@@ -28,7 +28,7 @@ def multirun_map(test):
             updated_parsed_args.domain_embed = list(map(add_dir, parsed_args.domain_embed or []))
             return test(collections, updated_parsed_args)
 
-        if not parsed_args.embed_location:
+        if 'embed_location' not in parsed_args or not parsed_args.embed_location:
             return test(collections, parsed_args)
         if not parsed_args.multirun:
             return run_with_base(parsed_args.embed_location)

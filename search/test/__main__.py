@@ -18,7 +18,7 @@ parent_parser.add_argument('-u', '--untranslated', action='store_true')
 parent_parser.add_argument('-b', '--baseline', action='store_true')
 parent_parser.add_argument('-s', '--subword', action='store_true')
 parent_parser.add_argument('-n', '--normalize', action='store_true')
-parent_parser.add_argument('-D', '--all_dictionary_options', action='store_true')
+parent_parser.add_argument('-a', '--all_dictionary_options', action='store_true')
 parent_parser.add_argument('-q', '--query_id', type=str, nargs='*')
 parent_parser.add_argument('-m', '--multirun', action='store_true')
 parent_parser.add_argument('--save_file', type=str, default='')
@@ -31,38 +31,39 @@ formatting_group.add_argument('-fx', '--x_axis', type=str, default='', help='x a
 formatting_group.add_argument('-fy', '--y_axis', type=str, default='', help='y axis name for chart')
 formatting_group.add_argument('-ft', '--title', type=str, default='', help='title for chart')
 
-embedding_group = parent_parser.add_argument_group('embedding')
-embedding_group.add_argument('-el', '--embed_location', type=str, nargs='?',
+monolingual_parent_parser = argparse.ArgumentParser(add_help=False, parents=[parent_parser])
+embedding_group = monolingual_parent_parser.add_argument_group('embedding')
+embedding_group.add_argument('-E', '--embed_location', type=str, nargs='?',
                              help='Embedding directory; can be used instead of full path in other domain args')
-embedding_group.add_argument('-ed', '--domain_embed', type=str, nargs='*',
+embedding_group.add_argument('-D', '--domain_embed', type=str, nargs='*',
                              help='Embedding format for domain-specific embedding')
-embedding_group.add_argument('-eg', '--embed', type=str, nargs='*',
+embedding_group.add_argument('-Q', '--embed', type=str, nargs='*',
                              help='Embedding location for general purpose embedding')
 
-interactive_parser = subparsers.add_parser('interactive', parents=[parent_parser])
+interactive_parser = subparsers.add_parser('interactive', parents=[monolingual_parent_parser])
 interactive_parser.set_defaults(func=None)
 
-oov_parser = subparsers.add_parser('oov', parents=[parent_parser])
+oov_parser = subparsers.add_parser('oov', parents=[monolingual_parent_parser])
 oov_parser.set_defaults(func=vary_embeddings(oov_test))
 
-embedding_search_parser = subparsers.add_parser('embed', parents=[parent_parser])
+embedding_search_parser = subparsers.add_parser('embed', parents=[monolingual_parent_parser])
 embedding_search_parser.set_defaults(func=vary_embeddings(embed_to_engine(search_test)))
 
-recall_search_parser = subparsers.add_parser('recall', parents=[parent_parser])
+recall_search_parser = subparsers.add_parser('recall', parents=[monolingual_parent_parser])
 recall_search_parser.set_defaults(func=vary_embeddings(embed_to_engine(recall_test)))
 
-hyperparameters_search_parser = subparsers.add_parser('hyperparameters', parents=[parent_parser])
+hyperparameters_search_parser = subparsers.add_parser('hyperparameters', parents=[monolingual_parent_parser])
 hyperparameters_search_parser.add_argument('-r', '--relative', type=str, nargs='?', help='column to show relative to')
 hyperparameters_search_parser.set_defaults(func=hyperparameters(embed_to_engine(search_test)))
 
-df_parser = subparsers.add_parser('df', parents=[parent_parser])
+df_parser = subparsers.add_parser('df', parents=[monolingual_parent_parser])
 add_df_parser_options(df_parser)
 df_parser.set_defaults(func=vary_df(search_test))
 
 bilingual_parser = subparsers.add_parser('bilingual', parents=[parent_parser])
-bilingual_parser.add_argument('-le', '--embed_locations', type=str, nargs='+', help='Embedding directory')
-bilingual_parser.add_argument('-de', '--doc_embed', type=str, help='Document-language embedding file')
-bilingual_parser.add_argument('-qe', '--query_embed', type=str, help='Query-language embedding file')
+bilingual_parser.add_argument('-E', '--embed_locations', type=str, nargs='+', help='Embedding directory')
+bilingual_parser.add_argument('-D', '--doc_embed', type=str, help='Document-language embedding file')
+bilingual_parser.add_argument('-Q', '--query_embed', type=str, help='Query-language embedding file')
 bilingual_parser.add_argument('-df', '--df_file', type=str, help='File for query-language df')
 bilingual_parser.add_argument('-uw', '--use_weights', action='store_true', help='Use df weights (not just stopwords)')
 bilingual_parser.add_argument('--search', action='store_true', help='Search for subdirectories containing embeddings')

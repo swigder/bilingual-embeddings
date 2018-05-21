@@ -4,6 +4,7 @@ import pandas as pd
 
 from dictionary import dictionary, BilingualDictionary
 from search_engine import BilingualEmbeddingSearchEngine
+from utils import print_with_time
 
 
 def bilingual(test):
@@ -19,11 +20,12 @@ def bilingual(test):
             for embed_location in parsed_args.embed_locations:
                 glob_format = '{}/**/{}'.format(embed_location, parsed_args.doc_embed)
                 embed_locations += list(map(os.path.dirname, glob(glob_format, recursive=True)))
+        print_with_time('Found {} locations to test.'.format(len(embed_locations)))
 
         df = pd.DataFrame(columns=test.columns, index=map(os.path.basename, embed_locations))
 
         for i, embed_location in enumerate(embed_locations):
-            print('Testing ({}/{}) {}...'.format(i, len(embed_locations), embed_location))
+            print_with_time('Testing ({}/{}) {}...'.format(i+1, len(embed_locations), embed_location))
 
             doc_dict = dictionary(os.path.join(embed_location, parsed_args.doc_embed), language='doc',
                                   use_subword=parsed_args.subword, normalize=parsed_args.normalize)
