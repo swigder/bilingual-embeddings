@@ -4,6 +4,8 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import numpy as np
+from matplotlib import gridspec
 
 
 def load_and_combine(path):
@@ -60,7 +62,8 @@ def read_all_pickles_in_dirs(paths):
 
 def read_all_pickles_in_dir(path):
     assert os.path.isdir(path)
-    return pd.concat([read_grid_pickle(file) for file in glob.glob(os.path.join(path, '*.pkl'))], axis=0).drop_duplicates()
+    df = pd.concat([read_grid_pickle(file) for file in glob.glob(os.path.join(path, '*.pkl'))], axis=0)
+    return df.drop_duplicates(df.columns.difference(['MAP@10']))
 
 
 def read_grid_pickle(path):
@@ -119,15 +122,58 @@ def two_2_map(df, row, col):
     return df.groupby([row, col])['MAP@10'].mean().unstack()
 
 
-def analyze(df):
+def parameter_interaction(df):
+    sns.set()
+
+    attributes = ['sub', 'win', 'epochs', 'norm', 'subword', 'pretrained']
+    for attribute in attributes:
+        others = [a for a in attributes if a != attribute]
+
+        fig = plt.figure(figsize=(12, 24))
+        fig.suptitle(attribute)
+        outer = gridspec.GridSpec(3, 1, wspace=0.1, hspace=0.1)
+
+        collection_groups = df.groupby('collection')
+        for i, collection in enumerate(collection_groups.groups):
+            collection_df = collection_groups.get_group(collection)
+
+            inner = gridspec.GridSpecFromSubplotSpec(2, 3, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+            axes = np.empty(shape=(2, 3), dtype=object)
+            for j in range(len(others)):
+                ax = plt.Subplot(fig, inner[j], sharex=axes[0, 0], sharey=axes[0, 0])
+                fig.add_subplot(ax)
+                axes[j // 3, j % 3] = ax
+
+            for j, other in enumerate(others):
+                grid = two_2_map(collection_df, attribute, other)
+                ax = axes[j // 3, j % 3]
+                grid.plot(ax=ax)
+                values = grid.index.tolist()
+                if ax.is_last_row():
+                    ax.set_xticks(values if all(type(x) is int for x in values) else range(len(values)))
+                    ax.set_xticklabels(values)
+                    ax.set_xlabel(attribute)
+                else:
+                    plt.setp(ax.get_xticklabels(), visible=False)
+
+                if ax.is_first_col():
+                    ax.set_ylabel('MAP@10')
+                else:
+                    plt.setp(ax.get_yticklabels(), visible=False)
+
+        fig.tight_layout()
+        fig.show()
+
+
+def parameter_interaction_old(df):
     def a(sub_df, name, attributes_to_test, attributes_to_control, reverse=False):
         for attribute in attributes_to_test:
-            fig, axes = plt.subplots(nrows=2, ncols=2, sharey=True)
+            fig, axes = plt.subplots(nrows=2, ncols=3, sharey=True)
             others = [a for a in attributes_to_control if a != attribute]
             for i, other in enumerate(others):
                 a, b = (attribute, other) if not reverse else (other, attribute)
                 grid = two_2_map(sub_df, a, b)
-                grid.plot(ax=axes[i // 2, i % 2])
+                grid.plot(ax=axes[i // 3, i % 3])
             values = grid.index.tolist()
             if not reverse:
                 plt.setp(axes, xticks=values if all(type(x) is int for x in values) else range(len(values)),
@@ -136,13 +182,12 @@ def analyze(df):
             plt.show()
 
     sns.set()
-    attributes = ['sub', 'win', 'epochs', 'norm', 'subword']
-    a(df, 'all', ['collection'], attributes[:4], reverse=True)
-    a(df, 'all', attributes, attributes)
+    attributes = ['sub', 'win', 'epochs', 'norm', 'subword', 'pretrained']
+    a(df, 'all', ['collection'], attributes, reverse=True)
     collection_groups = df.groupby('collection')
     for collection in collection_groups.groups:
         collection_df = collection_groups.get_group(collection)
-        a(collection_df, collection, attributes, attributes)
+        a(collection_df, collection, attributes, ['collection'] + attributes)
 
 
 def overall_parameters(df, baselines=False):

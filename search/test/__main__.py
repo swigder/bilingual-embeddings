@@ -38,7 +38,7 @@ embedding_group.add_argument('-E', '--embed_location', type=str, nargs='?',
                              help='Embedding directory; can be used instead of full path in other domain args')
 embedding_group.add_argument('-D', '--domain_embed', type=str, nargs='*',
                              help='Embedding format for domain-specific embedding')
-embedding_group.add_argument('-Q', '--embed', type=str, nargs='*',
+embedding_group.add_argument('-G', '--embed', type=str, nargs='*',
                              help='Embedding location for general purpose embedding')
 
 interactive_parser = subparsers.add_parser('interactive', parents=[monolingual_parent_parser])
