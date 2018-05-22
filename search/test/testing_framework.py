@@ -173,7 +173,7 @@ def search_test_map(collection, search_engine):
         precision = query_result(search_engine, i, query, expected, doc_ids, 10,
                                  verbose=False,
                                  metric=average_precision)
-        print_with_time(i, precision)
+        print_with_time("{} {}".format(i, precision))
         total_average_precision += precision
     return total_average_precision / len(queries)
 

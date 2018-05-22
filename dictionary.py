@@ -98,11 +98,11 @@ class BilingualDictionary(Dictionary):
 
     def word_vectors(self, tokens, lang=None):
         lang = lang or self.default_lang
-        if lang is not self.default_lang:
-            try:
-                print('Translations:', ['{} {} {}'.format(word, *self.translate(word, lang)[0]) for word in tokens])
-            except NotImplementedError:
-                pass
+        # if lang is not self.default_lang:
+        #     try:
+        #         print('Translations:', ['{} {} {}'.format(word, *self.translate(word, lang)[0]) for word in tokens])
+        #     except NotImplementedError:
+        #         pass
         return self.dictionaries[lang].word_vectors(tokens)
 
     def translate(self, src_word, src_lang, topn=1):
