@@ -21,6 +21,7 @@ parent_parser.add_argument('-n', '--normalize', action='store_true')
 parent_parser.add_argument('-a', '--all_dictionary_options', action='store_true')
 parent_parser.add_argument('-q', '--query_id', type=str, nargs='*')
 parent_parser.add_argument('-m', '--multirun', action='store_true')
+parent_parser.add_argument('-v', '--verbose', action='store_true')
 parent_parser.add_argument('--save_file', type=str, default='')
 
 formatting_group = parent_parser.add_argument_group('formatting')

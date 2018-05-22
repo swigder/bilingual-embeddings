@@ -170,9 +170,11 @@ def search_test_map(collection, search_engine):
         else collection.queries_translated.items()
     for i, query in queries:
         expected = collection.relevance[i]
-        total_average_precision += query_result(search_engine, i, query, expected, doc_ids, 10,
-                                                verbose=False,
-                                                metric=average_precision)
+        precision = query_result(search_engine, i, query, expected, doc_ids, 10,
+                                 verbose=False,
+                                 metric=average_precision)
+        print_with_time(i, precision)
+        total_average_precision += precision
     return total_average_precision / len(queries)
 
 
