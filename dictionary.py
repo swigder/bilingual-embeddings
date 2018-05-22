@@ -100,7 +100,7 @@ class BilingualDictionary(Dictionary):
         lang = lang or self.default_lang
         if lang is not self.default_lang:
             try:
-                print('Translations:',
+                print('\nTranslations:',
                       ' '.join(['{} {} {}'.format(word, *self.translate(word, lang)[0]) for word in tokens]))
             except NotImplementedError:
                 pass
