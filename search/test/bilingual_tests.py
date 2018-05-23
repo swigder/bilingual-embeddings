@@ -39,7 +39,9 @@ def bilingual(test):
                                                                      use_weights=parsed_args.use_weights)
             bilingual_search_engine.index_documents(collection.documents.values())
 
-            df.loc[os.path.basename(embed_location)] = test.f(collection, bilingual_search_engine)
+            result = test.f(collection, bilingual_search_engine)
+            df.loc[os.path.basename(embed_location)] = result
+            print_with_time('Found MAP@10 {} for embed {}.'.format(result, embed_location))
 
         return df
 
