@@ -8,6 +8,24 @@ import numpy as np
 from matplotlib import gridspec
 
 
+attributes = ['sub', 'win', 'epochs', 'norm', 'subword', 'pretrained']
+nice_names = {'sub': 'Minimum subword length',
+              'win': 'Window size',
+              'epochs': 'Epochs',
+              'norm': 'Normalize length',
+              'subword': 'Use subword data for OOV',
+              'pretrained': 'Model type'}
+baseline_columns = {'sub': 'No',
+                    'win': 5,
+                    'epochs': 5,
+                    'norm': False,
+                    'subword': False,
+                    'pretrained': 'Collection'}
+replacements = {'collection': {'ohsu-trec': 'ohsu'},
+                'sub': {'7': 'No'},
+                'pretrained': {True: 'Hybrid', False: 'Collection'}}
+
+
 def load_and_combine(path):
     df = pd.read_pickle(path)
     df = df.astype(float).groupby(df.index).mean()
@@ -100,8 +118,10 @@ def read_grid_pickle(path):
     results = pd.concat([results, hyperparams], axis=1)
     if contains_all:
         results = results.set_index('embedding')
-    results['collection'] = results['collection'].replace(['ohsu-trec'], 'ohsu')
-    results['sub'] = results['sub'].replace(['7'], 'No')
+
+    for attribute, pairs in replacements.items():
+        for original, replaced in pairs.items():
+            results[attribute] = results[attribute].replace([original], replaced)
     return results.apply(pd.to_numeric, errors='ignore')
 
 
@@ -115,7 +135,7 @@ def get_results(file_string, prefix, files):
 
 
 def get_max_map(df):
-    return df.loc[df['MAP@10'].idxmax()]
+    return df.loc[df.groupby('collection')['MAP@10'].idxmax()]
 
 
 def two_2_map(df, row, col):
@@ -125,39 +145,42 @@ def two_2_map(df, row, col):
 def parameter_interaction(df):
     sns.set()
 
-    attributes = ['sub', 'win', 'epochs', 'norm', 'subword', 'pretrained']
     for attribute in attributes:
         others = [a for a in attributes if a != attribute]
 
-        fig = plt.figure(figsize=(12, 24))
-        fig.suptitle(attribute)
+        fig = plt.figure(figsize=(12, 12))
+        fig.suptitle(nice_names[attribute])
         outer = gridspec.GridSpec(3, 1, wspace=0.1, hspace=0.1)
 
         collection_groups = df.groupby('collection')
         for i, collection in enumerate(collection_groups.groups):
             collection_df = collection_groups.get_group(collection)
 
-            inner = gridspec.GridSpecFromSubplotSpec(2, 3, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
-            axes = np.empty(shape=(2, 3), dtype=object)
+            inner = gridspec.GridSpecFromSubplotSpec(1, 5, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+            axes = np.empty(shape=(1, 5), dtype=object)
             for j in range(len(others)):
                 ax = plt.Subplot(fig, inner[j], sharex=axes[0, 0], sharey=axes[0, 0])
                 fig.add_subplot(ax)
-                axes[j // 3, j % 3] = ax
+                axes[0, j] = ax
 
             for j, other in enumerate(others):
                 grid = two_2_map(collection_df, attribute, other)
-                ax = axes[j // 3, j % 3]
+                ax = axes[0, j]
                 grid.plot(ax=ax)
                 values = grid.index.tolist()
                 if ax.is_last_row():
                     ax.set_xticks(values if all(type(x) is int for x in values) else range(len(values)))
                     ax.set_xticklabels(values)
-                    ax.set_xlabel(attribute)
+                    if i != 2 or j != 2:
+                        ax.set_xlabel('')
+                    else:
+                        ax.set_xlabel(nice_names[attribute])
                 else:
                     plt.setp(ax.get_xticklabels(), visible=False)
 
                 if ax.is_first_col():
-                    ax.set_ylabel('MAP@10')
+                    label = collection if i != 1 else 'MAP@10\n\n' + collection
+                    ax.set_ylabel(label)
                 else:
                     plt.setp(ax.get_yticklabels(), visible=False)
 
@@ -165,34 +188,7 @@ def parameter_interaction(df):
         fig.show()
 
 
-def parameter_interaction_old(df):
-    def a(sub_df, name, attributes_to_test, attributes_to_control, reverse=False):
-        for attribute in attributes_to_test:
-            fig, axes = plt.subplots(nrows=2, ncols=3, sharey=True)
-            others = [a for a in attributes_to_control if a != attribute]
-            for i, other in enumerate(others):
-                a, b = (attribute, other) if not reverse else (other, attribute)
-                grid = two_2_map(sub_df, a, b)
-                grid.plot(ax=axes[i // 3, i % 3])
-            values = grid.index.tolist()
-            if not reverse:
-                plt.setp(axes, xticks=values if all(type(x) is int for x in values) else range(len(values)),
-                         xticklabels=values)
-            plt.suptitle('{} {}'.format(name, attribute))
-            plt.show()
-
-    sns.set()
-    attributes = ['sub', 'win', 'epochs', 'norm', 'subword', 'pretrained']
-    a(df, 'all', ['collection'], attributes, reverse=True)
-    collection_groups = df.groupby('collection')
-    for collection in collection_groups.groups:
-        collection_df = collection_groups.get_group(collection)
-        a(collection_df, collection, attributes, ['collection'] + attributes)
-
-
 def overall_parameters(df, baselines=False):
-    attributes = ['sub', 'win', 'epochs', 'norm', 'subword', 'pretrained']
-    baseline_columns = {'sub': 'No', 'win': 5, 'epochs': 5, 'norm': False, 'subword': False, 'pretrained': False}
     sns.set()
     fig, axes = plt.subplots(nrows=2, ncols=3, sharey=True)
     for i, attribute in enumerate(attributes):
@@ -205,11 +201,11 @@ def overall_parameters(df, baselines=False):
         values = a.index.tolist()
         current_axes.set_xticks(values if all(type(x) is int for x in values) else range(len(values)))
         current_axes.set_xticklabels(values)
+        current_axes.set_xlabel(nice_names[attribute])
     plt.show()
 
 
 def impact_of_parameters(df):
-    attributes = ['sub', 'win', 'epochs', 'norm', 'subword', 'pretrained']
     stds = pd.DataFrame(index=df.groupby('collection').groups, columns=attributes)
     for attribute in attributes:
         those = df.groupby(['collection', attribute]).mean()['MAP@10'].unstack()

@@ -101,7 +101,7 @@ class BilingualDictionary(Dictionary):
         if lang is not self.default_lang:
             try:
                 print('\nTranslations:',
-                      ' '.join(['{} {} {}'.format(word, *self.translate(word, lang)[0]) for word in tokens]))
+                      ' '.join(['{} {} {:.4f}'.format(word, *self.translate(word, lang)[0]) for word in tokens]))
             except NotImplementedError:
                 pass
         return self.dictionaries[lang].word_vectors(tokens)
