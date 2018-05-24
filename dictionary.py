@@ -116,3 +116,28 @@ class BilingualDictionary(Dictionary):
     def synonyms(self, src_word, topn=1, lang=None):
         lang = lang or self.default_lang
         return self.dictionaries[lang].synonyms(src_word, topn=topn)
+
+
+class OovDictionary(Dictionary):
+    def __init__(self, dictionaries):
+        assert len(dictionaries) > 0
+        self.dictionaries = dictionaries
+        self.language = self.dictionaries[0].language
+        self.vector_dimensionality = self.dictionaries[0].vector_dimensionality
+
+    def __contains__(self, token):
+        for d in self.dictionaries:
+            if token in d:
+                return True
+        return False
+
+    def word_vectors(self, tokens):
+        vectors = [None] * len(tokens)
+        for i, token in enumerate(tokens):
+            for j, d in enumerate(self.dictionaries):
+                v = d.word_vector(token)
+                if any(v) or j == len(self.dictionaries) - 1:
+                    vectors[i] = v
+                    break  # out of dictionary loop
+                print(token, 'not found in dictionary', j)
+        return vectors

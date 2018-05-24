@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 
-from dictionary import dictionary, BilingualDictionary
+from dictionary import dictionary, BilingualDictionary, OovDictionary
 from search_engine import BilingualEmbeddingSearchEngine
 from utils import print_with_time
 
@@ -31,6 +31,10 @@ def bilingual(test):
                                   use_subword=parsed_args.subword, normalize=parsed_args.normalize)
             query_dict = dictionary(os.path.join(embed_location, parsed_args.query_embed), language='query',
                                     use_subword=parsed_args.subword, normalize=parsed_args.normalize)
+            if parsed_args.oov_embed:
+                oov_dict = dictionary(os.path.join(embed_location, parsed_args.oov_embed), language='query',
+                                      use_subword=parsed_args.subword, normalize=parsed_args.normalize)
+                query_dict = OovDictionary([query_dict, doc_dict, oov_dict])
             bilingual_dictionary = BilingualDictionary(src_dict=doc_dict, tgt_dict=query_dict, default_lang='doc')
 
             bilingual_search_engine = BilingualEmbeddingSearchEngine(dictionary=bilingual_dictionary,
