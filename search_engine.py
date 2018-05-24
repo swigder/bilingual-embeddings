@@ -123,6 +123,7 @@ class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
             return vector
 
     def _weighted_query_vector(self, tokens):
+        tokens = [token for token in tokens if not token.isnumeric() and token not in ['å', 'åring', 'årig']]
         vectors = self.dictionary.word_vectors(tokens=tokens, lang=self.query_lang)
         weights = [self.query_word_weights.get(word, self.query_default_word_weight) for word in tokens]
         # print('Weights:', ['{} {}'.format(token, weight) for token, weight in zip(tokens, weights)])
