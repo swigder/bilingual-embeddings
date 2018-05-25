@@ -143,14 +143,6 @@ def get_max_map(df):
     return df.loc[df.groupby('collection')[SCORE].idxmax()]
 
 
-def group_scores(df, groupby, average, n=2):
-    if average:
-        return df.groupby(groupby)[SCORE].mean().unstack()
-    else:
-        return df.sort_values([SCORE], ascending=False).groupby(groupby).head(n).groupby(
-            groupby).min()[SCORE].unstack()
-
-
 def plot_per_collection_single(df, plot_fn, suptitle, combine_legend=True):
     sns.set()
     sns.set_palette(['#66c2a5', '#fc8d62', '#8da0cb'])
@@ -303,39 +295,4 @@ def overall_parameters(df, split='pretrained'):
 
     plot_per_collection(df, others, df_function, 'Overall paramater impact',
                         share_x=False, column_labels=nice_names, x_label=False)
-
-
-def parameter_interaction_line(df, options, parameters=attributes):
-    for attribute in parameters:
-        others = [a for a in attributes if a != attribute]
-
-        def df_function(collection_df, other, ax):
-            grid = group_scores(collection_df, [attribute, other], **options)
-            grid.plot(ax=ax)
-            return grid
-
-        plot_per_collection(df, others, df_function, nice_names[attribute],
-                            share_x=True, column_labels=defaultdict(lambda: nice_names[attribute]))
-
-
-def overall_parameters_baseline(df, options, split='pretrained'):
-    others = [a for a in attributes if a != split]
-
-    def df_function(collection_df, other, ax):
-        a = group_scores(collection_df, [other, split], **options)
-        baseline_values = df.where(df[other] == baseline_columns[other]).groupby('collection').mean()['MAP@10']
-        a = (a - baseline_values) / baseline_values
-        a.plot(ax=ax)
-        return a
-
-    plot_per_collection(df, others, df_function, 'Overall paramater impact',
-                        share_x=False, column_labels=nice_names)
-
-
-def impact_of_parameters(df, options, split='collection'):
-    stds = pd.DataFrame(index=df.groupby(split).groups, columns=attributes)
-    for attribute in attributes:
-        those = group_scores(df, [attribute, split], **options).transpose()
-        stds[attribute] = (those.max(axis=1) - those.min(axis=1)) / those.min(axis=1)
-    return stds
 
