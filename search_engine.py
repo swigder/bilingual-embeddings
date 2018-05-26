@@ -118,12 +118,13 @@ class BilingualEmbeddingSearchEngine(EmbeddingSearchEngine):
         else:  # query language, df not available
             vector = self._weighted_query_vector(tokens)
             oov_tokens = [token for token in tokens if token not in self.dictionary.dictionaries[self.query_lang]]
-            # print('OOV', oov_tokens)
+            if len(oov_tokens) > 0:
+                print('OOV', oov_tokens)
             vector += np.sum(self.dictionary.word_vectors(tokens=oov_tokens, lang=self.doc_lang), axis=0)
             return vector
 
     def _weighted_query_vector(self, tokens):
-        tokens = [token for token in tokens if not token.isnumeric() and token not in ['å', 'åring', 'årig']]
+        tokens = [token for token in tokens if not token.isnumeric() and token not in ['å', 'åring', 'årig'] and len(token) > 1]
         vectors = self.dictionary.word_vectors(tokens=tokens, lang=self.query_lang)
         weights = [self.query_word_weights.get(word, self.query_default_word_weight) for word in tokens]
         # print('Weights:', ['{} {}'.format(token, weight) for token, weight in zip(tokens, weights)])

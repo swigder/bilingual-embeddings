@@ -104,7 +104,12 @@ class BilingualDictionary(Dictionary):
                       ' '.join(['{} {} {:.4f}'.format(word, *self.translate(word, lang)[0]) for word in tokens]))
             except NotImplementedError:
                 pass
+            translations = [self.translate(token, src_lang=lang)[0][0] for token in tokens]
+            return self.dictionaries[self.default_lang].word_vectors(translations)
         return self.dictionaries[lang].word_vectors(tokens)
+
+    def translate_list(self, src_words, src_lang):
+        return [self.translate(token, src_lang=src_lang)[0][0] for token in src_words]
 
     def translate(self, src_word, src_lang, topn=1):
         src_lang = src_lang or self.default_lang
@@ -138,6 +143,15 @@ class OovDictionary(Dictionary):
                 v = d.word_vector(token)
                 if any(v) or j == len(self.dictionaries) - 1:
                     vectors[i] = v
+                    if j == 2:
+                        print('combined subwords', token, self.dictionaries[1].synonyms(v, 5, True))
                     break  # out of dictionary loop
-                print(token, 'not found in dictionary', j)
+                elif token.endswith('s'):
+                    vectors[i] = d.word_vector(token[:-1])
+                    if any(vectors[i]):
+                        break
+                elif tokens[-2:] in ['er', 'ar', 'or', 'en', 'et']:
+                    vectors[i] = d.word_vector(token[:-2])
+                    if any(vectors[i]):
+                        break
         return vectors
