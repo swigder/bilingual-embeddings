@@ -17,9 +17,11 @@ WINDOW_SIZE = 'win'
 MIN_SUBWORD = 'sub'
 NORMALIZE = 'norm'
 USE_SUBWORD = 'subword'
+STOPWORD = 'stopword'
 
 attributes = [MIN_SUBWORD, WINDOW_SIZE, EPOCHS, NORMALIZE, USE_SUBWORD, PRETRAINED]
-nice_names = {MIN_SUBWORD: 'Minimum subword length',
+nice_names = {COLLECTION: 'Collection',
+              MIN_SUBWORD: 'Minimum subword length',
               WINDOW_SIZE: 'Window size',
               EPOCHS: 'Epochs',
               NORMALIZE: 'Normalize length',
@@ -57,28 +59,6 @@ def load_change_show(path, from_col, to_col):
     add_percentage_change(df, from_col, to_col)
     pd.set_option('precision', 4)
     print(df.to_latex())
-    return df
-
-
-def map_files_to_df_components(file_path):
-    mapping = {}
-    with open(file_path) as f:
-        for line in f:
-            if not line:
-                continue
-            file = line.split()[-1]
-            parts = file.split('/')
-            mapping[parts[-2]] = parts[-4]
-
-    df = pd.DataFrame(index=mapping.keys(), columns=[COLLECTION, MIN_SUBWORD, WINDOW_SIZE, 'epoch', 'min'])
-    for k, v in mapping.items():
-        split = v.split('-')
-        d = {COLLECTION: '-'.join(split[:3])}
-        for i, name in enumerate(split):
-            if name in df.columns:
-                d[name] = split[i + 1]
-        df.loc[k] = d
-
     return df
 
 
@@ -137,13 +117,50 @@ def read_grid_pickle(path):
     return results.apply(pd.to_numeric, errors='ignore')
 
 
-def unpickle_multiple(prefix, files):
-    return pd.concat([pd.read_pickle(os.path.join(prefix, file)) for file in files]).drop_duplicates()
+def file_or_dir_to_files(path, ext=None):
+    if os.path.isdir(path):
+        return list(filter(os.path.isfile, [os.path.join(path, f) for f in os.listdir(path) if not ext or f.endswith(ext)]))
+    else:
+        return [path]
 
 
-def get_results(file_path, prefix, files):
-    r = pd.concat([map_files_to_df_components(file_path), unpickle_multiple(prefix, files)], axis=1)
-    return r.apply(pd.to_numeric, errors='ignore')
+def ls_files_to_df_components(ls_file_path):
+    mapping = {}
+    for path in file_or_dir_to_files(ls_file_path):
+        with open(path) as f:
+            for line in f:
+                if not line:
+                    continue
+                file = line.split()[-1]
+                parts = file.split('/')
+                mapping[parts[-2]] = parts[-4]
+
+    df = pd.DataFrame(index=mapping.keys(), columns=[COLLECTION, MIN_SUBWORD, WINDOW_SIZE, 'epoch', 'min'])
+    for k, v in mapping.items():
+        split = v.split('-')
+        d = {COLLECTION: '-'.join(split[:3])}
+        for i, name in enumerate(split):
+            if name in df.columns:
+                d[name] = split[i + 1]
+        df.loc[k] = d
+
+    return df
+
+
+def unpickle_bilingual(results_file_path):
+    dfs = []
+    for path in file_or_dir_to_files(results_file_path, ext='.pkl'):
+        df = pd.read_pickle(path)
+        df[PRETRAINED] = os.path.basename(path).split('-')[1]
+        df[STOPWORD] = STOPWORD in path
+        dfs.append(df)
+    df = pd.concat(dfs).reset_index()
+    return df.drop_duplicates(df.columns.difference([SCORE])).set_index('index')
+
+
+def get_results_bilingual(ls_file_path, results_file_path):
+    ls_df, results_df = ls_files_to_df_components(ls_file_path), unpickle_bilingual(results_file_path)
+    return ls_df.join(results_df).apply(pd.to_numeric, errors='ignore').reset_index(drop=True)
 
 
 def get_max_map(df):
