@@ -314,8 +314,8 @@ def plot_single_parameter_change(df, attribute, split=PRETRAINED, relative=False
                       dodge=False, join=False, markers='d', scale=1, ax=ax, legend=True)
         ymin, ymax = collection_df[diff_col].min(), collection_df[diff_col].max()
         ratio = 2  # of positive to negative
-        ymin, ymax = (ymax / -ratio, ymax) if abs(ymax) > abs(ymin / ratio) else (ymin, ymin * -ratio)
-        ax.set_ylim([ymin * 1.2, ymax * 1.2])
+        ymin, ymax = (ymax / -ratio, ymax) if abs(ymax) > abs(ymin * ratio) else (ymin, ymin * -ratio)
+        ax.set_ylim(bottom=ymin * 1.2, top=ymax * 1.2)
         handles, labels = ax.get_legend_handles_labels()
         legend_start = len(handles) // 2
         ax.legend(handles[legend_start:], labels[legend_start:], title=nice_names[attribute])
@@ -331,5 +331,5 @@ def single_parameter_change(df, attribute, split=PRETRAINED, single_jump=False):
     groupby = [COLLECTION, TYPE] if not split else [COLLECTION, split, TYPE]
     grouped = change_df.reset_index().groupby(groupby)
     print(grouped.agg({DIFF_ABS: ['mean', 'min', 'max'], DIFF_REL: ['mean']})[[DIFF_ABS, DIFF_REL]])
-    # print(grouped.max())
-    # print(grouped.min())
+    print('max\n', grouped.max())
+    print('min\n', grouped.min())
