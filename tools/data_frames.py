@@ -34,7 +34,7 @@ baseline_columns = {MIN_SUBWORD: 'No',
                     USE_SUBWORD: False,
                     PRETRAINED: 'Collection'}
 replacements = {COLLECTION: {'ohsu-trec': 'ohsu'},
-                MIN_SUBWORD: {'7': 'No'},
+                MIN_SUBWORD: {'7': 'None'},
                 PRETRAINED: {True: 'Hybrid', False: 'Collection'}}
 collections = ['adi', 'time', 'ohsu']
 
@@ -295,12 +295,15 @@ DIFF_REL = 'Change in MAP@10 (Rel)'
 TYPE = 'type'
 
 
-def _parameter_change_df(df, attribute, single_jump=False):
+def _parameter_change_df(df, attribute, single_jump=False, all_to=None):
     new_index = list(set(df.columns).difference([attribute, SCORE]))
     values = sorted(df[attribute].unique())
     if single_jump:
         values = [values[0], values[-1]]
-    columns = [(values[i-1], values[i]) for i in range(1, len(values))]
+    if not all_to:
+        columns = [(values[i-1], values[i]) for i in range(1, len(values))]
+    else:
+        columns = [(all_to, v) for v in values if v != all_to]
     column_names = ['{} to {}'.format(i, j) for i, j in columns]
 
     indexed = df.set_index(new_index)
@@ -340,8 +343,8 @@ def plot_single_parameter_change(df, attribute, split=PRETRAINED, relative=False
     plot_per_collection_single(df, df_function, nice_names[attribute], combine_legend=True)
 
 
-def single_parameter_change(df, attribute, split=PRETRAINED, single_jump=False):
-    change_df = _parameter_change_df(df, attribute, single_jump=single_jump)
+def single_parameter_change(df, attribute, split=PRETRAINED, single_jump=False, all_to=None):
+    change_df = _parameter_change_df(df, attribute, single_jump=single_jump, all_to=all_to)
 
     plot_single_parameter_change(change_df, attribute, split, relative=False)
 

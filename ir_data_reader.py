@@ -154,7 +154,7 @@ class TimeReader(IrDataReader):
 
 
 class AdiReader(IrDataReader):
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, name):
         f = dir_appender(data_dir)
         super().__init__(name='adi', doc_file=f('ADI.ALL'), query_file=f('ADI.QRY'), relevance_file=f('ADI.REL'))
 
@@ -213,6 +213,43 @@ class OhsuReader(IrDataReader):
         if line.startswith('<desc>') or line.startswith('<top>') or line.startswith('</top>'):
             return True
         if self.previous_line_marker in ['.S', '.M', '.P', '.A']:  # skip all fields except uid, title, abstract
+            self.previous_line_marker = None
+            return True
+        return False
+
+
+class CacmReader(IrDataReader):
+    def __init__(self, data_dir, name):
+        f = dir_appender(data_dir)
+        super().__init__(name=name, doc_file=f('cacm.all'), query_file=f('query.text'), relevance_file=f('qrels.text'))
+        self.previous_line_marker = None
+
+    @staticmethod
+    def extract_id(line):
+        if not line.startswith('.I'):
+            return None
+        return int(line.split()[1])
+
+    def extract_doc_id(self, line):
+        return self.extract_id(line)
+
+    def extract_query_id(self, line):
+        return self.extract_id(line)
+
+    def extract_relevance(self, line):
+        query_id, doc_id = line.split()[0:2]
+        return query_id, [int(doc_id)]
+
+    def extract_line(self, line):
+        return line
+
+    def skip_line(self, line):
+        if line.startswith('.I'):
+            return False
+        if line.startswith('.'):
+            self.previous_line_marker = line
+            return True
+        if self.previous_line_marker not in ['.T', '.W']:  # skip all fields except uid, title, abstract
             self.previous_line_marker = None
             return True
         return False
@@ -277,7 +314,7 @@ class FireReader(IrDataReader):
                             relevance=relevance_judgements)
 
 
-readers = {'adi': AdiReader, 'time': TimeReader, 'ohsu-trec': OhsuReader, 'fire': FireReader}
+readers = {'adi': AdiReader, 'time': TimeReader, 'ohsu-trec': OhsuReader, 'cacm': CacmReader}
 
 
 def print_description(items, description):
